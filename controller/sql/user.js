@@ -422,6 +422,7 @@ export const deletePermissionRole = async (req, res) => {
 // Create User
 export const createUser = async (req, res) => {
     try {
+        const { organizationId } = req.user
         const {
             fullName,
             password,
@@ -457,6 +458,7 @@ export const createUser = async (req, res) => {
             college,
             percentage,
             previousCompany,
+            profileImage,
             previousDesignation,
             toDate,
             fromDate,
@@ -472,7 +474,7 @@ export const createUser = async (req, res) => {
             EmployeeType,
             PermissionRole,
             employeeCode,
-            organizationId,
+
         } = req.body;
 
         if (!organizationId) {
@@ -542,6 +544,7 @@ export const createUser = async (req, res) => {
             dob,
             pan,
             adhar,
+            profileImage,
             father,
             currentAddress,
             currentState,
@@ -679,183 +682,185 @@ export const createUser = async (req, res) => {
 
 // Create Admin
 export const createAdmin = async (req, res) => {
-  try {
-    const {
-      fullName,
-      password,
-      department,
-      gmail,
-      reportingManager,
-      designation,
-      joiningDate,
-      email,
-      email1,
-      mobile,
-      gender,
-      dob,
-      pan,
-      adhar,
-      father,
-      currentAddress,
-      currentState,
-      currentCity,
-      currentPin,
-      residence,
-      perState,
-      perCity,
-      perPin,
-      Martial,
-      nationality,
-      Mother,
-      qualification,
-      specialization,
-      qualificationType,
-      yearPass,
-      university,
-      college,
-      percentage,
-      previousCompany,
-      previousDesignation,
-      toDate,
-      fromDate,
-      numberOfMonth,
-      Jobdescription,
-      SalaryPay,
-      SalaryBankName,
-      BeneficiaryName,
-      BankIfsc,
-      AccountNumber,
-      confirmAccount,
-      Branch,
-      EmployeeType,
-      PermissionRole,
-      employeeCode,
-      organizationId,
-    } = req.body;
+    try {
+        const {
+            fullName,
+            password,
+            department,
+            gmail,
+            reportingManager,
+            designation,
+            joiningDate,
+            email,
+            email1,
+            mobile,
+            gender,
+            dob,
+            pan,
+            adhar,
+            father,
+            currentAddress,
+            currentState,
+            currentCity,
+            currentPin,
+            residence,
+            perState,
+            perCity,
+            perPin,
+            profileImage,
+            Martial,
+            nationality,
+            Mother,
+            qualification,
+            specialization,
+            qualificationType,
+            yearPass,
+            university,
+            college,
+            percentage,
+            previousCompany,
+            previousDesignation,
+            toDate,
+            fromDate,
+            numberOfMonth,
+            Jobdescription,
+            SalaryPay,
+            SalaryBankName,
+            BeneficiaryName,
+            BankIfsc,
+            AccountNumber,
+            confirmAccount,
+            Branch,
+            EmployeeType,
+            PermissionRole,
+            employeeCode,
+            organizationId,
+        } = req.body;
 
-    if (!organizationId || !email || !fullName || !password) {
-      return res.status(400).json({ status: false, message: "Required fields are missing" });
-    }
+        if (!organizationId || !email || !fullName || !password) {
+            return res.status(400).json({ status: false, message: "Required fields are missing" });
+        }
 
-    // Check org exists
-    const [orgRows] = await db.execute('SELECT userLimit FROM organizations WHERE id = ?', [organizationId]);
-    if (orgRows.length === 0) {
-      return res.status(400).json({ status: false, message: "Invalid organization ID" });
-    }
+        // Check org exists
+        const [orgRows] = await db.execute('SELECT userLimit FROM organizations WHERE id = ?', [organizationId]);
+        if (orgRows.length === 0) {
+            return res.status(400).json({ status: false, message: "Invalid organization ID" });
+        }
 
-    const userLimit = orgRows[0].userLimit;
+        const userLimit = orgRows[0].userLimit;
 
-    const [[{ currentUserCount }]] = await db.execute(
-      'SELECT COUNT(*) AS currentUserCount FROM users WHERE organizationId = ?',
-      [organizationId]
-    );
+        const [[{ currentUserCount }]] = await db.execute(
+            'SELECT COUNT(*) AS currentUserCount FROM users WHERE organizationId = ?',
+            [organizationId]
+        );
 
-    if (currentUserCount >= userLimit) {
-      return res.status(400).json({ status: false, message: "User limit exceeded for this organization" });
-    }
+        if (currentUserCount >= userLimit) {
+            return res.status(400).json({ status: false, message: "User limit exceeded for this organization" });
+        }
 
-    // Check email
-    const [userRows] = await db.execute(
-      'SELECT 1 FROM users WHERE email = ? AND organizationId = ?',
-      [email, organizationId]
-    );
-    if (userRows.length > 0) {
-      return res.status(400).json({ status: false, message: "Email already exists" });
-    }
+        // Check email
+        const [userRows] = await db.execute(
+            'SELECT 1 FROM users WHERE email = ? AND organizationId = ?',
+            [email, organizationId]
+        );
+        if (userRows.length > 0) {
+            return res.status(400).json({ status: false, message: "Email already exists" });
+        }
 
-    // Validate PermissionRole
-    if (PermissionRole && PermissionRole !== "Select Role") {
-      const [roleRows] = await db.execute(
-        'SELECT 1 FROM permission_roles WHERE id = ? AND organizationId = ?',
-        [PermissionRole, organizationId]
-      );
-      if (roleRows.length === 0) {
-        return res.status(400).json({
-          status: false,
-          message: "Permission role does not belong to this organization",
+        // Validate PermissionRole
+        if (PermissionRole && PermissionRole !== "Select Role") {
+            const [roleRows] = await db.execute(
+                'SELECT 1 FROM permission_roles WHERE id = ? AND organizationId = ?',
+                [PermissionRole, organizationId]
+            );
+            if (roleRows.length === 0) {
+                return res.status(400).json({
+                    status: false,
+                    message: "Permission role does not belong to this organization",
+                });
+            }
+        }
+
+        // Unique ID
+        let unique = false;
+        let generatedId;
+        while (!unique) {
+            generatedId = new mongoose.Types.ObjectId().toHexString();
+            const [existingId] = await db.execute('SELECT 1 FROM users WHERE id = ?', [generatedId]);
+            if (!existingId.length) unique = true;
+        }
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const data = removeUndefined({
+            id: generatedId,
+            fullName,
+            password: hashedPassword,
+            department,
+            gmail,
+            reportingManager,
+            designation,
+            joiningDate,
+            email,
+            email1,
+            mobile,
+            gender,
+            dob,
+            pan,
+            adhar,
+            father,
+            currentAddress,
+            currentState,
+            currentCity,
+            currentPin,
+            residence,
+            perState,
+            perCity,
+            perPin,
+            Martial,
+            nationality,
+            Mother,
+            qualification,
+            specialization,
+            qualificationType,
+            yearPass,
+            university,
+            college,
+            percentage,
+            previousCompany,
+            previousDesignation,
+            profileImage,
+            toDate,
+            fromDate,
+            numberOfMonth,
+            Jobdescription,
+            SalaryPay,
+            SalaryBankName,
+            BeneficiaryName,
+            BankIfsc,
+            AccountNumber,
+            confirmAccount,
+            Branch,
+            EmployeeType,
+            employeeCode,
+            organizationId,
+            role: "ADMIN", // Force ADMIN role
+            permissionRoleId: PermissionRole !== "Select Role" ? PermissionRole : null,
         });
-      }
-    }
 
-    // Unique ID
-    let unique = false;
-    let generatedId;
-    while (!unique) {
-      generatedId = new mongoose.Types.ObjectId().toHexString();
-      const [existingId] = await db.execute('SELECT 1 FROM users WHERE id = ?', [generatedId]);
-      if (!existingId.length) unique = true;
-    }
+        delete data.PermissionRole;
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+        // Insert SQL
+        const fields = Object.keys(data);
+        const placeholders = fields.map(() => '?').join(', ');
+        const values = fields.map(key => data[key]);
+        const query = `INSERT INTO users (${fields.join(', ')}) VALUES (${placeholders})`;
 
-    const data = removeUndefined({
-      id: generatedId,
-      fullName,
-      password: hashedPassword,
-      department,
-      gmail,
-      reportingManager,
-      designation,
-      joiningDate,
-      email,
-      email1,
-      mobile,
-      gender,
-      dob,
-      pan,
-      adhar,
-      father,
-      currentAddress,
-      currentState,
-      currentCity,
-      currentPin,
-      residence,
-      perState,
-      perCity,
-      perPin,
-      Martial,
-      nationality,
-      Mother,
-      qualification,
-      specialization,
-      qualificationType,
-      yearPass,
-      university,
-      college,
-      percentage,
-      previousCompany,
-      previousDesignation,
-      toDate,
-      fromDate,
-      numberOfMonth,
-      Jobdescription,
-      SalaryPay,
-      SalaryBankName,
-      BeneficiaryName,
-      BankIfsc,
-      AccountNumber,
-      confirmAccount,
-      Branch,
-      EmployeeType,
-      employeeCode,
-      organizationId,
-      role: "ADMIN", // Force ADMIN role
-      permissionRoleId: PermissionRole !== "Select Role" ? PermissionRole : null,
-    });
+        await db.execute(query, values);
 
-    delete data.PermissionRole;
-
-    // Insert SQL
-    const fields = Object.keys(data);
-    const placeholders = fields.map(() => '?').join(', ');
-    const values = fields.map(key => data[key]);
-    const query = `INSERT INTO users (${fields.join(', ')}) VALUES (${placeholders})`;
-
-    await db.execute(query, values);
-
-    // Email content
-    const html = `
+        // Email content
+        const html = `
       <div>
         Welcome Admin! Your HRMS admin account has been successfully created.
         <br/>
@@ -869,18 +874,18 @@ export const createAdmin = async (req, res) => {
       </div>
     `;
 
-    await SendEmail(email, "Your Admin Account is Ready", html, html);
+        await SendEmail(email, "Your Admin Account is Ready", html, html);
 
-    return res.status(201).json({
-      status: true,
-      message: "Admin created successfully",
-      data
-    });
+        return res.status(201).json({
+            status: true,
+            message: "Admin created successfully",
+            data
+        });
 
-  } catch (error) {
-    console.error("Error creating admin:", error);
-    return res.status(500).json({ status: false, message: "Internal Server Error" });
-  }
+    } catch (error) {
+        console.error("Error creating admin:", error);
+        return res.status(500).json({ status: false, message: "Internal Server Error" });
+    }
 };
 
 // Update User
@@ -922,6 +927,7 @@ export const UpdateUser = async (req, res) => {
             percentage,
             previousCompany,
             previousDesignation,
+            profileImage,
             toDate,
             fromDate,
             numberOfMonth,
@@ -990,6 +996,7 @@ export const UpdateUser = async (req, res) => {
             percentage,
             previousCompany,
             previousDesignation,
+            profileImage,
             toDate,
             fromDate,
             numberOfMonth,
@@ -1022,12 +1029,21 @@ export const UpdateUser = async (req, res) => {
             data.permissionRoleId = PermissionRole;
         }
 
-        // Prepare SQL update
+        // Ensure there is at least one field to update
         const fields = Object.keys(data);
         const values = fields.map(key => data[key]);
+
+        if (fields.length === 0) {
+            return res.status(400).json({
+                status: false,
+                message: "No valid fields provided for update"
+            });
+        }
+
+        // Build and run SQL update
         const setClause = fields.map(field => `${field} = ?`).join(', ');
         const query = `UPDATE users SET ${setClause} WHERE id = ?`;
-        await db.execute(query, [...values, id]); // Add `id` for the WHERE clause
+        await db.execute(query, [...values, id]);
 
         // Fetch updated user
         const [updatedRows] = await db.execute('SELECT * FROM users WHERE id = ?', [id]);

@@ -690,7 +690,7 @@ export const updateIndicator = asyncHandler(async (req, res) => {
 });
 
 export const postApprisal = asyncHandler(async (req, res) => {
-  
+
 
   const { Branch, SelectMonth, userId, remarks, organizationId } = req.body;
 
@@ -726,7 +726,7 @@ export const postApprisal = asyncHandler(async (req, res) => {
 export const getApprisal = asyncHandler(async (req, res) => {
   const organizationId = req.user.organizationId
 
-  const data = await Apprisal.find({organizationId}).sort({ Branch: "-1" }).lean();
+  const data = await Apprisal.find({ organizationId }).sort({ Branch: "-1" }).lean();
 
   const newData = [];
   for (const item of data) {
@@ -2216,7 +2216,7 @@ export const createHoliday = asyncHandler(async (req, res) => {
     );
 
     // Create the holiday after sending emails
-    const holiday = await Holiday.create({ holidayName, startDate, endDate });
+    const holiday = await Holiday.create({ holidayName, startDate, endDate, organizationId });
 
     return res.status(200).json({
       status: true,

@@ -31,7 +31,7 @@ router.delete("/deletePermissionRole", deletePermissionRole);
 router.post("/uploadDocuments", uploadUserDocuments);
 router.get("/getUserDocuments", getUserDocuments);
 
-router.post("/creatUser", createUser);
+router.post("/creatUser", isAuthenticated, createUser);
 router.post("/createAdmin", createAdmin);
 
 router.post("/login", userLogin);
