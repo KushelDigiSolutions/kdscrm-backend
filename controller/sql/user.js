@@ -677,6 +677,212 @@ export const createUser = async (req, res) => {
     }
 };
 
+// Create Admin
+export const createAdmin = async (req, res) => {
+  try {
+    const {
+      fullName,
+      password,
+      department,
+      gmail,
+      reportingManager,
+      designation,
+      joiningDate,
+      email,
+      email1,
+      mobile,
+      gender,
+      dob,
+      pan,
+      adhar,
+      father,
+      currentAddress,
+      currentState,
+      currentCity,
+      currentPin,
+      residence,
+      perState,
+      perCity,
+      perPin,
+      Martial,
+      nationality,
+      Mother,
+      qualification,
+      specialization,
+      qualificationType,
+      yearPass,
+      university,
+      college,
+      percentage,
+      previousCompany,
+      previousDesignation,
+      toDate,
+      fromDate,
+      numberOfMonth,
+      Jobdescription,
+      SalaryPay,
+      SalaryBankName,
+      BeneficiaryName,
+      BankIfsc,
+      AccountNumber,
+      confirmAccount,
+      Branch,
+      EmployeeType,
+      PermissionRole,
+      employeeCode,
+      organizationId,
+    } = req.body;
+
+    if (!organizationId || !email || !fullName || !password) {
+      return res.status(400).json({ status: false, message: "Required fields are missing" });
+    }
+
+    // Check org exists
+    const [orgRows] = await db.execute('SELECT userLimit FROM organizations WHERE id = ?', [organizationId]);
+    if (orgRows.length === 0) {
+      return res.status(400).json({ status: false, message: "Invalid organization ID" });
+    }
+
+    const userLimit = orgRows[0].userLimit;
+
+    const [[{ currentUserCount }]] = await db.execute(
+      'SELECT COUNT(*) AS currentUserCount FROM users WHERE organizationId = ?',
+      [organizationId]
+    );
+
+    if (currentUserCount >= userLimit) {
+      return res.status(400).json({ status: false, message: "User limit exceeded for this organization" });
+    }
+
+    // Check email
+    const [userRows] = await db.execute(
+      'SELECT 1 FROM users WHERE email = ? AND organizationId = ?',
+      [email, organizationId]
+    );
+    if (userRows.length > 0) {
+      return res.status(400).json({ status: false, message: "Email already exists" });
+    }
+
+    // Validate PermissionRole
+    if (PermissionRole && PermissionRole !== "Select Role") {
+      const [roleRows] = await db.execute(
+        'SELECT 1 FROM permission_roles WHERE id = ? AND organizationId = ?',
+        [PermissionRole, organizationId]
+      );
+      if (roleRows.length === 0) {
+        return res.status(400).json({
+          status: false,
+          message: "Permission role does not belong to this organization",
+        });
+      }
+    }
+
+    // Unique ID
+    let unique = false;
+    let generatedId;
+    while (!unique) {
+      generatedId = new mongoose.Types.ObjectId().toHexString();
+      const [existingId] = await db.execute('SELECT 1 FROM users WHERE id = ?', [generatedId]);
+      if (!existingId.length) unique = true;
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const data = removeUndefined({
+      id: generatedId,
+      fullName,
+      password: hashedPassword,
+      department,
+      gmail,
+      reportingManager,
+      designation,
+      joiningDate,
+      email,
+      email1,
+      mobile,
+      gender,
+      dob,
+      pan,
+      adhar,
+      father,
+      currentAddress,
+      currentState,
+      currentCity,
+      currentPin,
+      residence,
+      perState,
+      perCity,
+      perPin,
+      Martial,
+      nationality,
+      Mother,
+      qualification,
+      specialization,
+      qualificationType,
+      yearPass,
+      university,
+      college,
+      percentage,
+      previousCompany,
+      previousDesignation,
+      toDate,
+      fromDate,
+      numberOfMonth,
+      Jobdescription,
+      SalaryPay,
+      SalaryBankName,
+      BeneficiaryName,
+      BankIfsc,
+      AccountNumber,
+      confirmAccount,
+      Branch,
+      EmployeeType,
+      employeeCode,
+      organizationId,
+      role: "ADMIN", // Force ADMIN role
+      permissionRoleId: PermissionRole !== "Select Role" ? PermissionRole : null,
+    });
+
+    delete data.PermissionRole;
+
+    // Insert SQL
+    const fields = Object.keys(data);
+    const placeholders = fields.map(() => '?').join(', ');
+    const values = fields.map(key => data[key]);
+    const query = `INSERT INTO users (${fields.join(', ')}) VALUES (${placeholders})`;
+
+    await db.execute(query, values);
+
+    // Email content
+    const html = `
+      <div>
+        Welcome Admin! Your HRMS admin account has been successfully created.
+        <br/>
+        Email: ${email}<br/>
+        Temporary Password: ${password}<br/>
+        <br/>
+        Login here: <a href="https://hrms.kusheldigi.com/login">HRMS Login</a><br/>
+        Please change your password after logging in.
+        <br/><br/>
+        Regards,<br/>Kushel Digi Solutions
+      </div>
+    `;
+
+    await SendEmail(email, "Your Admin Account is Ready", html, html);
+
+    return res.status(201).json({
+      status: true,
+      message: "Admin created successfully",
+      data
+    });
+
+  } catch (error) {
+    console.error("Error creating admin:", error);
+    return res.status(500).json({ status: false, message: "Internal Server Error" });
+  }
+};
+
 // Update User
 export const UpdateUser = async (req, res) => {
     try {

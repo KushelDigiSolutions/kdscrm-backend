@@ -1,5 +1,14 @@
 import { Router } from "express";
-import { createOrganization, getOrganization, UpdateUserActivityMode, getOrganizationById, updateOrganization, deleteOrganization, providePermissions, getAllPerissionRoles, getOrganizationPermission, getPermission, updatePermission, deletePermissionRole, createUser, UpdateUser, GetUsers, GetSingleUser, getUserByOrganization, deleteUser, userLogin, postAssets, getAssets, getAssetsByID, getAssetsByOrganization, updateAsset, deleteAsset, uploadUserDocuments, getUserDocuments } from "../controller/sql/user.js";
+import {
+    createOrganization, getOrganization, UpdateUserActivityMode,
+    getOrganizationById, updateOrganization, deleteOrganization,
+    providePermissions, getAllPerissionRoles, getOrganizationPermission,
+    getPermission, updatePermission, deletePermissionRole,
+    createUser, UpdateUser, GetUsers, GetSingleUser,
+    getUserByOrganization, deleteUser, userLogin, postAssets,
+    getAssets, getAssetsByID, getAssetsByOrganization, updateAsset,
+    deleteAsset, uploadUserDocuments, getUserDocuments, createAdmin
+} from "../controller/sql/user.js";
 import isAuthenticated from "../middleware/auth.js";
 // import { uploadToCloudinary } from "../../utils/cloudinary.js";
 
@@ -23,6 +32,8 @@ router.post("/uploadDocuments", uploadUserDocuments);
 router.get("/getUserDocuments", getUserDocuments);
 
 router.post("/creatUser", createUser);
+router.post("/createAdmin", createAdmin);
+
 router.post("/login", userLogin);
 router.get("/getUsers", GetUsers);
 router.get("/getuser", GetSingleUser);
