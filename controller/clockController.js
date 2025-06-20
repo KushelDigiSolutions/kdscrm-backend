@@ -6,7 +6,7 @@ export const createClock = async (req, res) => {
   try {
 
     const { clockInDetail, clockOutDetail, date, breakTime, todayTask } = req.body;
-    const organizationId = req.user.organizationId
+    const { organizationId } = req.user
 
     const { userId } = req.params;
 
@@ -15,7 +15,7 @@ export const createClock = async (req, res) => {
     const clockDetails = await Clock.create({ organizationId, Date: date, clockIn: clockInDetail, clockOut: clockOutDetail, user: userId, breakTime: breakTime, overTime: overTime, todayTask });
 
 
-    return res.status(200).json({
+    return res.status(201).json({
       status: true,
       message: "Succesful created",
       data: clockDetails
@@ -88,7 +88,7 @@ export const SaveClockNote = async (req, res) => {
 
 function compareDates(date1Str, date2Str) {
   // Helper to parse any format safely
-  console.log(date1Str, date2Str)
+  // console.log(date1Str, date2Str)
   function parseDate(dateStr) {
     if (!dateStr || typeof dateStr !== 'string') return null;
 

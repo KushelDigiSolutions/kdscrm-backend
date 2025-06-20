@@ -681,7 +681,7 @@ function isCurrentDateBetween(startDateStr, endDateStr) {
 
 export const GetTodayLeave = async (req, res) => {
   try {
-    const organizationId = req.user.organizationId;
+    const { organizationId } = req.user;
     // console.log(organizationId);
     // Fetch all leaves
     const allLeaves = await Leave.find({ organizationId });

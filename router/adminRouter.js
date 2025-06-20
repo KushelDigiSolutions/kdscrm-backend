@@ -144,7 +144,7 @@ router.delete("/deleteTrack/:id", deleteTracking);
 router.put("/updateTrack/:id", updateTracking);
 
 router.post('/postAnnouncement', isAuthenticated, postAnnouncement);
-router.get('/getAnnouncement', getAnnouncement);
+router.get('/getAnnouncement',isAuthenticated, getAnnouncement);
 router.delete("/deleteAnnouncement/:id", deleteAnnouncement);
 router.put("/updateAnnouncement/:id", isAuthenticated, updateAnnouncement);
 

@@ -8,7 +8,7 @@ export const mailSender = async (email, subject, html) => {
         secure: true,
         auth: {
             user: "info@kusheldigi.com",
-            pass: "Infokusheldigi@3030"
+            pass: "Infokushel@12345"
         },
         from: "info@kusheldigi.com",
         tls: {

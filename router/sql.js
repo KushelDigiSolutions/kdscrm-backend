@@ -28,7 +28,7 @@ router.get("/getPermission", getPermission);
 router.put("/updatePermission", updatePermission)
 router.delete("/deletePermissionRole", deletePermissionRole);
 
-router.post("/uploadDocuments", uploadUserDocuments);
+router.post("/uploadDocuments/:userId", uploadUserDocuments);
 router.get("/getUserDocuments", getUserDocuments);
 
 router.post("/creatUser", isAuthenticated, createUser);
@@ -42,11 +42,11 @@ router.put("/Update/:id", UpdateUser);
 router.delete("/changeStatus/:id", UpdateUserActivityMode);
 router.delete("/deleteUser", deleteUser);
 
-router.post("/postAssets", postAssets);
+router.post("/postAssets", isAuthenticated, postAssets);
 router.get("/getAssets", getAssets);
 router.get("/asset", getAssetsByID);
 router.get("/getAllAssets", isAuthenticated, getAssetsByOrganization);
-router.put("/updateAsset", updateAsset);
+router.put("/updateAsset/:id", updateAsset);
 router.delete("/deleteAsset", deleteAsset);
 
 export default router;

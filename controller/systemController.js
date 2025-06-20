@@ -15,8 +15,16 @@ import LeadStat from "../models/LeadStat/LeadStat.js";
 import LeadTypeCategory from "../models/LeadTypeCategory/LeadTypeCategory.js";
 import FollowUpType from "../models/FollowUpType/FollowUpType.js";
 import LeadTypeSubCategory from "../models/LeadTypeSubCategory/LeadTypeSubCategory.js";
+
 export const postLeaveType = asyncHandler(async (req, res) => {
   const { name, days, organizationId } = req.body;
+  // Basic validation
+  if (!name || !days || !organizationId) {
+    return res.status(400).json({
+      success: false,
+      message: "Name, Branch, and Organization ID are required",
+    });
+  }
   const existLeave = await LeaveType.findOne({ name, organizationId });
   if (existLeave) {
     return res.status(400).json({
@@ -178,7 +186,10 @@ export const updateBranch = asyncHandler(async (req, res) => {
 
 export const getBranchs = asyncHandler(async (req, res) => {
   try {
-    const organizationId = req.user?.organizationId;
+    const { organizationId } = req.user;
+    if (!organizationId) {
+      return res.status(400).json({ message: "Organization id is required" })
+    }
     const data = await Branch.find({ organizationId });
     return res.status(200).json(
       new ApiResponse(200, data, "Branches fetched successfully")
@@ -682,7 +693,13 @@ export const deleteDocSetup = asyncHandler(async (req, res) => {
 
 export const fetchAllDocs = asyncHandler(async (req, res) => {
   try {
-    const organizationId = req.user.organizationId;
+    const { organizationId } = req.user;
+    if (!organizationId) {
+      return res.status(500).json({
+        success: false,
+        message: "organizationId is required",
+      });
+    }
 
     // Fetch documents directly filtered by organizationId
     const allDocs = await Document.find({ organizationId });

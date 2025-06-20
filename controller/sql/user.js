@@ -6,6 +6,7 @@ import { uploadToCloudinary } from "../../utils/cloudinary.js"
 import { SendEmail } from '../../utils/SendEmail.js';
 import Clients from '../../models/Tasks/Clients.js';
 import mongoose from 'mongoose';
+import { mailSender } from '../../utils/SendMail2.js';
 
 
 /**
@@ -474,6 +475,7 @@ export const createUser = async (req, res) => {
             EmployeeType,
             PermissionRole,
             employeeCode,
+            leaveNumber
 
         } = req.body;
 
@@ -579,6 +581,7 @@ export const createUser = async (req, res) => {
             Branch,
             EmployeeType,
             employeeCode,
+            leaveNumber,
             organizationId,
         });
 
@@ -644,27 +647,47 @@ export const createUser = async (req, res) => {
           `;
 
         const html = `
-              <div>
-                  Welcome aboard! We are excited to have you as a part of our team and introduce you to our HRMS system. Here, you’ll find a centralized platform for managing essential HR-related tasks and accessing important information.
-        <br/>
-        Your account has been successfully created and below are your login details:
-        <br/>
-        - email: ${email} 
-        - Temporary ${password}:
-        <br/>
-        Please use the link below to log in for the first time. For security purposes, we recommend changing your password after your initial login.
-        <br/>
-        Login Here; ${`https://hrms.kusheldigi.com/login`}
-        
-        <br/>
-        If you have any questions or need assistance, please don’t hesitate to reach out to our support team.
-        
-        Welcome once again!
-        <br/>
-        Best Regards, 
-        Kushel Digi Solutions
-             </div>
-          `;
+  <div style="max-width:600px; margin:0 auto; font-family:Arial, sans-serif; background-color:#f7f9fc; padding:20px; border:1px solid #e0e0e0; border-radius:8px; color:#333;">
+    <h2 style="color:#4A90E2; text-align:center;">Welcome to Kushel Digi HRMS 🎉</h2>
+
+    <p style="font-size:15px; line-height:1.6;">
+      We are excited to welcome you to the team! Our <strong>HRMS system</strong> is your central hub for managing essential HR tasks and accessing important information.
+    </p>
+
+    <p style="font-size:15px; line-height:1.6;">Your account has been successfully created. Below are your login credentials:</p>
+
+    <table style="width:100%; margin-top:15px; border-collapse:collapse; font-size:15px;">
+      <tr>
+        <td style="padding:8px; font-weight:bold;">Email</td>
+        <td style="padding:8px;">${email}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px; font-weight:bold;">Temporary Password</td>
+        <td style="padding:8px;">${password}</td>
+      </tr>
+    </table>
+
+    <p style="font-size:15px; margin-top:20px;">
+      Please click the button below to log in for the first time:
+    </p>
+
+    <div style="text-align:center; margin:20px 0;">
+      <a href="https://hrms.kusheldigi.com/login" style="background-color:#4A90E2; color:white; padding:12px 24px; text-decoration:none; border-radius:5px; font-weight:bold; display:inline-block;">
+        Login to HRMS
+      </a>
+    </div>
+
+    <p style="font-size:14px; color:#555;">
+      For security, please change your password after logging in.
+    </p>
+
+    <p style="font-size:14px; color:#555;">
+      If you have any questions or need help, feel free to contact our support team.
+    </p>
+
+    <p style="font-size:14px; margin-top:30px;">Best Regards,<br><strong>Kushel Digi Solutions</strong></p>
+  </div>
+`;
 
         await SendEmail(email, "Login Details", message, html);
 
@@ -735,6 +758,7 @@ export const createAdmin = async (req, res) => {
             PermissionRole,
             employeeCode,
             organizationId,
+            leaveNumber
         } = req.body;
 
         if (!organizationId || !email || !fullName || !password) {
@@ -843,6 +867,7 @@ export const createAdmin = async (req, res) => {
             confirmAccount,
             Branch,
             EmployeeType,
+            leaveNumber,
             employeeCode,
             organizationId,
             role: "ADMIN", // Force ADMIN role
@@ -941,7 +966,8 @@ export const UpdateUser = async (req, res) => {
             Branch,
             EmployeeType,
             PermissionRole,
-            employeeCode
+            employeeCode,
+            leaveNumber
         } = req.body;
 
         if (!id) {
@@ -1010,6 +1036,7 @@ export const UpdateUser = async (req, res) => {
             Branch,
             EmployeeType,
             employeeCode,
+            leaveNumber
         });
 
         // Set role from department
@@ -1115,29 +1142,35 @@ export const GetUsers = async (req, res) => {
 // Get Single User By Id
 export const GetSingleUser = async (req, res) => {
     try {
-        const { userId } = req.query;;
+        const { userId } = req.query;
         if (!userId) {
             return res.status(400).json({ status: false, message: "User ID is required" });
         }
 
+        // Step 1: Fetch user
         const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
         if (users.length === 0) {
             return res.status(404).json({ status: false, message: "User not found" });
         }
         const user = users[0];
 
-        // Fetch permissionRole details
+        // Step 2: Fetch permission role if available
         let permissionRole = null;
         if (user.permissionRoleId) {
             const [roles] = await db.execute('SELECT * FROM permission_roles WHERE id = ?', [user.permissionRoleId]);
             if (roles.length > 0) {
-                // Remove unwanted fields
                 const { organizationId, createdAt, updatedAt, ...rest } = roles[0];
                 permissionRole = rest;
             }
         }
-
         user.permissionRole = permissionRole;
+
+        // Step 3: Fetch user documents
+        const [documents] = await db.execute(
+            'SELECT id, name, url FROM documents WHERE userId = ?',
+            [userId]
+        );
+        user.documents = documents; // Attach documents to user object
 
         return res.status(200).json({
             status: true,
@@ -1151,6 +1184,7 @@ export const GetSingleUser = async (req, res) => {
         });
     }
 };
+
 
 // Get User By Organization
 export const getUserByOrganization = async (req, res) => {
@@ -1341,7 +1375,8 @@ export const userLogin = async (req, res) => {
 
 export const uploadUserDocuments = async (req, res) => {
     try {
-        const { userId } = req.body;
+        const { userId } = req.params;
+        console.log(userId)
         const {
             adharCard,
             pancard,
@@ -1477,6 +1512,7 @@ export const getUserDocuments = async (req, res) => {
 // Post Assets
 export const postAssets = async (req, res) => {
     try {
+        const { organizationId } = req.user;
         const {
             userId,
             designation,
@@ -1485,12 +1521,12 @@ export const postAssets = async (req, res) => {
             purchaseDate,
             additonal,
             description,
-            status
+            status,
         } = req.body;
 
         // 1. Verify user exists
         const [userRows] = await db.execute(
-            'SELECT id, fullName, organizationId FROM users WHERE id = ?',
+            'SELECT id, fullName, organizationId, email FROM users WHERE id = ?',
             [userId]
         );
         if (userRows.length === 0) {
@@ -1511,54 +1547,83 @@ export const postAssets = async (req, res) => {
             if (!existingId.length) unique = true;
         }
 
-        const query = `
-      INSERT INTO assets (
-        id,
-        userId,
-        employee,
-        designation,
-        department,
-        product,
-        description,
-        purchaseDate,
-        additonal,
-        status,
-        organizationId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-        const values = [
-            generatedId,
+        const data = removeUndefined({
             userId,
-            user.fullName,
             designation,
             department,
             product,
-            description,
             purchaseDate,
             additonal,
-            status,
-            user.organizationId
-        ];
+            description,
+            status
+        })
+        data.employee = user.fullName
+        data.id = generatedId;
+        data.organizationId = organizationId;
 
-        const [result] = await db.execute(query, values);
+        // Prepare SQL insert
+        const fields = Object.keys(data);
+        const placeholders = fields.map(() => '?').join(', ');
+        const values = fields.map(k => data[k]);
+        const query = `INSERT INTO assets (${fields.join(', ')}) VALUES (${placeholders}) `
+        await db.execute(query, values);
+        console.log(user)
+        await mailSender(
+            user.email,
+            "Regarding Asset Assignment",
+            `
+  <div style="max-width:600px; margin:0 auto; padding:20px; font-family:Arial, sans-serif; background-color:#f9f9f9; color:#333; border-radius:10px; border:1px solid #ddd;">
+    <h2 style="color:#4A90E2; text-align:center;">Asset Assignment Details</h2>
+    <p>Hello <strong>${user.fullName}</strong>,</p>
+
+    <p>You have been assigned the following asset. Please review the details below and accept the assignment.</p>
+
+    <table style="width:100%; border-collapse:collapse; margin-top:20px;">
+      <tr>
+        <td style="padding:8px; border:1px solid #ccc;"><strong>Designation</strong></td>
+        <td style="padding:8px; border:1px solid #ccc;">${designation || '-'}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px; border:1px solid #ccc;"><strong>Department</strong></td>
+        <td style="padding:8px; border:1px solid #ccc;">${department || '-'}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px; border:1px solid #ccc;"><strong>Product</strong></td>
+        <td style="padding:8px; border:1px solid #ccc;">${product || '-'}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px; border:1px solid #ccc;"><strong>Purchase Date</strong></td>
+        <td style="padding:8px; border:1px solid #ccc;">${purchaseDate || '-'}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px; border:1px solid #ccc;"><strong>Additional Product</strong></td>
+        <td style="padding:8px; border:1px solid #ccc;">${additonal || '-'}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px; border:1px solid #ccc;"><strong>Description</strong></td>
+        <td style="padding:8px; border:1px solid #ccc;">${description || '-'}</td>
+      </tr>
+    </table>
+
+    <div style="text-align:center; margin-top:30px;">
+      <p 
+         style=" padding:12px 24px; text-decoration:none; border-radius:5px; display:inline-block; font-weight:bold;">
+        Accept Asset By Reply
+      </p>
+    </div>
+
+    <p style="margin-top:30px; font-size:12px; color:#888; text-align:center;">
+      If you believe this message was sent in error, please ignore it.
+    </p>
+  </div>
+  `
+        );
 
         // 3. Return created asset (you could also re-select if you want all columns)
         return res.status(201).json({
             status: true,
             message: "Asset created successfully",
-            data: {
-                id: assetId,
-                userId,
-                employee: user.fullName,
-                designation,
-                department,
-                product,
-                description,
-                purchaseDate,
-                additonal,
-                status,
-                organizationId: user.organizationId
-            }
+            data
         });
     } catch (error) {
         console.error("Error creating asset:", error);
@@ -1651,8 +1716,8 @@ export const getAssetsByOrganization = async (req, res) => {
 // Update Asset
 export const updateAsset = async (req, res) => {
     try {
+        const { id } = req.params
         const {
-            id,
             designation,
             department,
             product,
