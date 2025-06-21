@@ -192,7 +192,8 @@ const allPermission = [
 // Create Permissions
 export const providePermissions = async (req, res) => {
     try {
-        const { name, Service, organizationId } = req.body;
+        const { organizationId } = req.user;
+        const { name, Service } = req.body;
 
         if (!organizationId || !name || !Service) {
             return res.status(400).json({ message: 'Required fields are missing' });

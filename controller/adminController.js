@@ -868,7 +868,7 @@ export const postAssets = asyncHandler(async (req, res) => {
 
   const title = `New Assets`;
 
-  const user = users?._id;
+  const user = users?.id;
 
   const anss = await Notification.create({
     title,
@@ -1023,8 +1023,11 @@ export const updateTracking = asyncHandler(async (req, res) => {
 // ========================announcement controller================
 export const postAnnouncement = asyncHandler(async (req, res) => {
   try {
+    const { organizationId } = req?.user;
+    if (!organizationId) {
+      return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+    }
     const { title, Branch, Department, Employee, startDate, endDate, description } = req.body;
-    const organizationId = req.user.organizationId;
 
     if (!title || !Branch || !Department || !Employee || !startDate || !endDate || !description) {
       return res.status(400).json(new ApiResponse(400, null, "All fields are required"));
@@ -1050,15 +1053,44 @@ export const postAnnouncement = asyncHandler(async (req, res) => {
           mailSender(
             user.email,
             "Create Announcement",
-            `<div>
-              <div>Title: ${title}</div>
-              <div>Branch: ${Branch}</div>
-              <div>Department: ${Department}</div>
-              <div>Employee: ${Employee}</div>
-              <div>Start Date: ${startDate}</div>
-              <div>End Date: ${endDate}</div>
-              <div>Description: ${description}</div>
-            </div>`
+            `
+  <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; border-radius: 10px; color: #333;">
+    <h2 style="text-align: center; color: #4f46e5; margin-bottom: 20px;">📢 New Announcement</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr>
+        <td style="padding: 8px;"><strong>Title:</strong></td>
+        <td style="padding: 8px;">${title}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px;"><strong>Branch:</strong></td>
+        <td style="padding: 8px;">${Branch}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px;"><strong>Department:</strong></td>
+        <td style="padding: 8px;">${Department}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px;"><strong>Employee:</strong></td>
+        <td style="padding: 8px;">${user.fullName}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px;"><strong>Start Date:</strong></td>
+        <td style="padding: 8px;">${startDate}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px;"><strong>End Date:</strong></td>
+        <td style="padding: 8px;">${endDate}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; vertical-align: top;"><strong>Description:</strong></td>
+        <td style="padding: 8px;">${description}</td>
+      </tr>
+    </table>
+    <div style="margin-top: 30px; text-align: center; color: #555;">
+      <p style="font-size: 14px;">Please take note of this announcement and follow accordingly.</p>
+    </div>
+  </div>
+`
           ).catch((err) => {
             console.error(`Failed to send email to ${user.email}:`, err.message);
           })
@@ -1267,7 +1299,11 @@ export const updateAnnouncement = asyncHandler(async (req, res) => {
 
 export const postTermination = asyncHandler(async (req, res) => {
   try {
-    const { userId, type, noticeDate, terminationDate, description, organizationId } = req.body;
+    const { organizationId } = req?.user;
+    if (!organizationId) {
+      return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+    }
+    const { userId, type, noticeDate, terminationDate, description } = req.body;
     // Fetch the user 
     const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
     if (users.length === 0) {
@@ -1282,14 +1318,40 @@ export const postTermination = asyncHandler(async (req, res) => {
     // Send email to the person who was warning against
     await mailSender(
       userDetail.email,
-      "Regarding Warning",
-      `<div>
-      <div>Termination Type: ${type}</div>
-      <div>NoticeDate: ${noticeDate}</div>
-      <div>TerminationDate: ${terminationDate}</div>
-      <div>Description: ${description}</div>
-      </div>`
+      "Regarding Termination",
+      `
+  <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f4f6f8; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <h2 style="color: #d9534f; text-align: center; margin-bottom: 25px;">🔒 Termination Notice</h2>
+      <p style="font-size: 16px; margin-bottom: 20px;">This message is to inform you regarding your termination details:</p>
+
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Termination Type:</td>
+          <td style="padding: 10px; color: #000;">${type}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Notice Date:</td>
+          <td style="padding: 10px; color: #000;">${noticeDate}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Termination Date:</td>
+          <td style="padding: 10px; color: #000;">${terminationDate}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${description}</td>
+        </tr>
+      </table>
+
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is a system-generated email. For any queries, please contact HR.</small>
+      </div>
+    </div>
+  </div>
+  `
     );
+
     return res.status(200).json(new ApiResponse(200, termination, " successfully posted"));
   } catch (error) {
     console.log(error)
@@ -1301,7 +1363,10 @@ export const postTermination = asyncHandler(async (req, res) => {
 
 export const getTermination = asyncHandler(async (req, res) => {
   try {
-    const organizationId = req.user.organizationId;
+    const { organizationId } = req?.user;
+    if (!organizationId) {
+      return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+    }
     const data = await Termination.find({ organizationId });
     return res.status(200).json(new ApiResponse(200, data, "Successfully fetched all the Termination"));
   } catch (error) {
@@ -1345,13 +1410,40 @@ export const updateTermination = asyncHandler(async (req, res) => {
     // Send email to the person who was warning against
     await mailSender(
       userDetail.email,
-      "Regarding Warning",
-      `<div>
-      <div>Termination Type: ${type}</div>
-      <div>NoticeDate: ${noticeDate}</div>
-      <div>TerminationDate: ${terminationDate}</div>
-      <div>Description: ${description}</div>
-      </div>`)
+      "Regarding Termination",
+      `
+  <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f4f6f8; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <h2 style="color: #d9534f; text-align: center; margin-bottom: 25px;">🔒 Termination Notice</h2>
+      <p style="font-size: 16px; margin-bottom: 20px;">This message is to inform you regarding your termination details:</p>
+
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Termination Type:</td>
+          <td style="padding: 10px; color: #000;">${type}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Notice Date:</td>
+          <td style="padding: 10px; color: #000;">${noticeDate}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Termination Date:</td>
+          <td style="padding: 10px; color: #000;">${terminationDate}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${description}</td>
+        </tr>
+      </table>
+
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is a system-generated email. For any queries, please contact HR.</small>
+      </div>
+    </div>
+  </div>
+  `
+    );
+
 
     console.log(updatedTermination);
     return res.status(200).json(new ApiResponse(200, updatedTermination, "Updated Successfully"));
@@ -1366,12 +1458,15 @@ export const updateTermination = asyncHandler(async (req, res) => {
 
 export const postWarning = asyncHandler(async (req, res) => {
   try {
+    const { organizationId } = req?.user;
+    if (!organizationId) {
+      return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+    }
     const { warningById,
       warningToId,
       subject,
       warningDate,
       description,
-      organizationId
     } = req.body;
 
     // Fetch the user who is registering the warning
@@ -1404,14 +1499,39 @@ export const postWarning = asyncHandler(async (req, res) => {
     await mailSender(
       userDetail2.email,
       "Regarding Warning",
-      `<div>
-        <div><strong>You have received a Warning</strong></div>
-        <div><strong>Warning By:</strong> ${userDetail1.fullName}</div>
-        <div><strong>Title:</strong> ${subject}</div>
-        <div><strong>Complain Date:</strong> ${warningDate}</div>
-        <div><strong>Description:</strong> ${description}</div>
-      </div>`
+      `
+  <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f4f6f8; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <h2 style="color: #ffc107; text-align: center; margin-bottom: 25px;">⚠️ Warning Notice</h2>
+      <p style="font-size: 16px; margin-bottom: 20px;">You have received a warning. Please review the details below:</p>
+
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Warning By:</td>
+          <td style="padding: 10px; color: #000;">${userDetail1.fullName}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Title:</td>
+          <td style="padding: 10px; color: #000;">${subject}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Warning Date:</td>
+          <td style="padding: 10px; color: #000;">${warningDate}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${description}</td>
+        </tr>
+      </table>
+
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is an automated message from the HRMS. No reply is required.</small>
+      </div>
+    </div>
+  </div>
+  `
     );
+
     return res.status(200).json(new ApiResponse(200, termination, " successfully posted"));
   } catch (error) {
     console.log(error);
@@ -1424,9 +1544,11 @@ export const postWarning = asyncHandler(async (req, res) => {
 
 export const getWarning = asyncHandler(async (req, res) => {
   try {
-    const organizationId = req.user.organizationId;
+    const { organizationId } = req?.user;
+    if (!organizationId) {
+      return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+    }
     const data = await Warning.find({ organizationId })
-    console.log(data)
     return res.status(200).json({ success: true, message: "Successfully fetched all the Warning", data });
   } catch (error) {
     console.log(error);
@@ -1491,14 +1613,39 @@ export const updateWarning = asyncHandler(async (req, res) => {
     await mailSender(
       userDetail2.email,
       "Regarding Warning",
-      `<div>
-        <div><strong>You have received a Warning</strong></div>
-        <div><strong>Warning By:</strong> ${userDetail1.fullName}</div>
-        <div><strong>Title:</strong> ${subject}</div>
-        <div><strong>Complain Date:</strong> ${warningDate}</div>
-        <div><strong>Description:</strong> ${description}</div>
-      </div>`
+      `
+  <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f4f6f8; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <h2 style="color: #ffc107; text-align: center; margin-bottom: 25px;">⚠️ Warning Notice</h2>
+      <p style="font-size: 16px; margin-bottom: 20px;">You have received a warning. Please review the details below:</p>
+
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Warning By:</td>
+          <td style="padding: 10px; color: #000;">${userDetail1.fullName}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Title:</td>
+          <td style="padding: 10px; color: #000;">${subject}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Warning Date:</td>
+          <td style="padding: 10px; color: #000;">${warningDate}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${description}</td>
+        </tr>
+      </table>
+
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is an automated message from the HRMS. No reply is required.</small>
+      </div>
+    </div>
+  </div>
+  `
     );
+
     return res.status(200).json(new ApiResponse(200, updateTermination, "Updated  Successfully"));
   } catch (error) {
     console.log(error);
@@ -1511,8 +1658,12 @@ export const updateWarning = asyncHandler(async (req, res) => {
 
 export const postComplain = asyncHandler(async (req, res) => {
   try {
+    const { organizationId } = req?.user;
+    if (!organizationId) {
+      return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+    }
     const {
-      complainFromId, complainAgainId, title, complainDate, organizationId } = req.body;
+      complainFromId, complainAgainId, title, complainDate, description } = req.body;
 
     // Fetch the user who is registering the complaint
     const [users1] = await db.execute('SELECT * FROM users WHERE id = ?', [complainFromId]);
@@ -1527,6 +1678,7 @@ export const postComplain = asyncHandler(async (req, res) => {
       return res.status(404).json({ status: false, message: "Complainee not found" });
     }
     const userDetail2 = users2[0]; // User against whom complaint is made
+
 
     // Create the complaint entry in the database
     const complain = await Complain.create({
@@ -1544,14 +1696,39 @@ export const postComplain = asyncHandler(async (req, res) => {
     await mailSender(
       userDetail2.email,
       "Regarding Complaint",
-      `<div>
-        <div><strong>You have received a complaint</strong></div>
-        <div><strong>Complain From:</strong> ${userDetail1.fullName}</div>
-        <div><strong>Title:</strong> ${title}</div>
-        <div><strong>Complain Date:</strong> ${complainDate}</div>
-        <div><strong>Description:</strong> ${description}</div>
-      </div>`
+      `
+  <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f4f6f8; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <h2 style="color: #dc3545; text-align: center; margin-bottom: 25px;">⚠️ Complaint Notification</h2>
+      <p style="font-size: 16px; margin-bottom: 20px;">You have received a new complaint. Please review the details below:</p>
+
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Complain From:</td>
+          <td style="padding: 10px; color: #000;">${userDetail1.fullName}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Title:</td>
+          <td style="padding: 10px; color: #000;">${title}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Complain Date:</td>
+          <td style="padding: 10px; color: #000;">${complainDate}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${description}</td>
+        </tr>
+      </table>
+
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is an automated message from the HR system. No reply is required.</small>
+      </div>
+    </div>
+  </div>
+  `
     );
+
 
     // Return response
     return res
@@ -1570,7 +1747,10 @@ export const postComplain = asyncHandler(async (req, res) => {
 
 
 export const getComplain = asyncHandler(async (req, res) => {
-  const organizationId = req.user.organizationId;
+  const { organizationId } = req?.user;
+  if (!organizationId) {
+    return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+  }
   const data = await Complain.find({ organizationId });
 
   return res
@@ -1632,12 +1812,42 @@ export const updateComplain = asyncHandler(async (req, res) => {
       }
     );
 
-    await mailSender(userDetail2.email, "Regarding Warning", `<div>
-      <div>Complain From: ${userDetail2.fullName}</div>
-      <div>Title: ${title}</div>
-      <div>Complain Date: ${complainDate}</div>
-      <div>Description: ${description}</div>
-      </div>`)
+    await mailSender(
+      userDetail2.email,
+      "Regarding Complaint",
+      `
+  <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f4f6f8; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <h2 style="color: #dc3545; text-align: center; margin-bottom: 25px;">⚠️ Complaint Notification</h2>
+      <p style="font-size: 16px; margin-bottom: 20px;">You have received a new complaint. Please review the details below:</p>
+
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Complain From:</td>
+          <td style="padding: 10px; color: #000;">${userDetail1.fullName}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Title:</td>
+          <td style="padding: 10px; color: #000;">${title}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Complain Date:</td>
+          <td style="padding: 10px; color: #000;">${complainDate}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${description}</td>
+        </tr>
+      </table>
+
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is an automated message from the HR system. No reply is required.</small>
+      </div>
+    </div>
+  </div>
+  `
+    );
+
     return res.status(200).json(new ApiResponse(200, updateTermination, "Updated  Successfully"));
   } catch (error) {
     console.log(error)
@@ -1651,10 +1861,14 @@ export const updateComplain = asyncHandler(async (req, res) => {
 export const postResignation = asyncHandler(async (req, res) => {
 
   try {
+    const { organizationId } = req?.user;
+    if (!organizationId) {
+      return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+    }
     const { userId,
       noticeDate,
       resignationDate,
-      description, organizationId
+      description,
     } = req.body;
 
     const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
@@ -1673,12 +1887,39 @@ export const postResignation = asyncHandler(async (req, res) => {
       organizationId
     });
 
-    await mailSender(userDetail.email, `Regarding Resignation`, `<div>
-       <div>Employee: ${userDetail.fullName}</div>
-      <div>Notice Date: ${noticeDate}</div>
-      <div>Resignation Date: ${resignationDate}</div>
-      <div>Description: ${description}</div>
-       </div>`);
+    await mailSender(
+      userDetail.email,
+      `Regarding Resignation`,
+      `
+  <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f6f9fc; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
+      <h2 style="color: #e74c3c; text-align: center;">Resignation Notice</h2>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Employee:</td>
+          <td style="padding: 10px; color: #000;">${userDetail.fullName}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Notice Date:</td>
+          <td style="padding: 10px; color: #000;">${noticeDate}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Resignation Date:</td>
+          <td style="padding: 10px; color: #000;">${resignationDate}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${description}</td>
+        </tr>
+      </table>
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is an automated message. Please do not reply to this email.</small>
+      </div>
+    </div>
+  </div>
+  `
+    );
+
 
     return res
       .status(200)
@@ -1692,7 +1933,10 @@ export const postResignation = asyncHandler(async (req, res) => {
 });
 
 export const getResignation = asyncHandler(async (req, res) => {
-  const organizationId = req.user.organizationId
+  const { organizationId } = req?.user;
+  if (!organizationId) {
+    return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+  }
   const data = await Resignation.find({ organizationId });
   return res
     .status(200)
@@ -1735,16 +1979,37 @@ export const updateResignation = asyncHandler(async (req, res) => {
     { new: true }
   );
 
-  // Send email
   await mailSender(
     userDetail.email,
     `Regarding Resignation`,
-    `<div>
-      <div>Employee: ${userDetail.fullName}</div>
-      <div>Notice Date: ${noticeDate}</div>
-      <div>Resignation Date: ${resignationDate}</div>
-      <div>Description: ${description}</div>
-    </div>`
+    `
+  <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f6f9fc; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
+      <h2 style="color: #e74c3c; text-align: center;">Resignation Notice</h2>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Employee:</td>
+          <td style="padding: 10px; color: #000;">${userDetail.fullName}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Notice Date:</td>
+          <td style="padding: 10px; color: #000;">${noticeDate}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Resignation Date:</td>
+          <td style="padding: 10px; color: #000;">${resignationDate}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${description}</td>
+        </tr>
+      </table>
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is an automated message. Please do not reply to this email.</small>
+      </div>
+    </div>
+  </div>
+  `
   );
 
   return res.status(200).json(
@@ -1758,8 +2023,11 @@ export const updateResignation = asyncHandler(async (req, res) => {
 export const postPromotion = asyncHandler(async (req, res) => {
 
   try {
-    const { userId, Designation, title, promotionDate, description, organizationId } = req.body;
-    console.log(userId, Designation, title, promotionDate, description, organizationId)
+    const { organizationId } = req?.user;
+    if (!organizationId) {
+      return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+    }
+    const { userId, Designation, title, promotionDate, description } = req.body;
 
     // Get the user
     const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
@@ -1772,6 +2040,42 @@ export const postPromotion = asyncHandler(async (req, res) => {
     const promotion = await Promotion.create({
       userId, Employee: userDetail.fullName, Designation, title, promotionDate, description, organizationId
     });
+    await mailSender(
+      userDetail.email,
+      `Regarding Promotion`,
+      `
+  <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f4f6f8; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <h2 style="color: #28a745; text-align: center; margin-bottom: 25px;">🎉 Promotion Notification</h2>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Employee:</td>
+          <td style="padding: 10px; color: #000;">${userDetail.fullName}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Designation:</td>
+          <td style="padding: 10px; color: #000;">${Designation}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Title:</td>
+          <td style="padding: 10px; color: #000;">${title}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Promotion Date:</td>
+          <td style="padding: 10px; color: #000;">${promotionDate}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${description}</td>
+        </tr>
+      </table>
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is an automated message from the HR system. No reply is necessary.</small>
+      </div>
+    </div>
+  </div>
+  `
+    );
 
 
     return res.status(200).json(new ApiResponse(200, promotion, " successfully posted"));
@@ -1785,7 +2089,10 @@ export const postPromotion = asyncHandler(async (req, res) => {
 });
 
 export const getPromotion = asyncHandler(async (req, res) => {
-  const organizationId = req.user.organizationId
+  const { organizationId } = req?.user;
+  if (!organizationId) {
+    return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+  }
   const data = await Promotion.find({ organizationId });
   return res
     .status(200)
@@ -1830,18 +2137,43 @@ export const updatePromotion = asyncHandler(async (req, res) => {
       }
     );
 
-    // Send email
     await mailSender(
       userDetail.email,
-      `Regarding Resignation`,
-      `<div>
-      <div>Employee: ${userDetail.fullName}</div>
-      <div>Designation: ${Designation}</div>
-      <div>title: ${title}</div>
-      <div>Promotion Date: ${promotionDate}</div>
-      <div>Description: ${description}</div>
-      </div>`
+      `Regarding Promotion`,
+      `
+  <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f4f6f8; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <h2 style="color: #28a745; text-align: center; margin-bottom: 25px;">🎉 Promotion Notification</h2>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Employee:</td>
+          <td style="padding: 10px; color: #000;">${userDetail.fullName}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Designation:</td>
+          <td style="padding: 10px; color: #000;">${Designation}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Title:</td>
+          <td style="padding: 10px; color: #000;">${title}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Promotion Date:</td>
+          <td style="padding: 10px; color: #000;">${promotionDate}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${description}</td>
+        </tr>
+      </table>
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is an automated message from the HR system. No reply is necessary.</small>
+      </div>
+    </div>
+  </div>
+  `
     );
+
     return res.status(200).json(new ApiResponse(200, updatePromotion, "Updated  Successfully"));
   } catch (error) {
     console.log(error);
@@ -2058,10 +2390,13 @@ export const updateTrainingList = asyncHandler(async (req, res) => {
 
 export const createTransfer = asyncHandler(async (req, res) => {
   try {
+    const { organizationId } = req?.user;
 
-    const { userId, branch, Employee, Department, TransferDate, Description, organizationId } = req.body;
+    if (!organizationId) {
+      return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+    }
+    const { userId, branch, Department, TransferDate, Description } = req.body;
 
-    // const userDetail = await User.findOne({ fullName: Employee });
     const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
     if (users.length === 0) {
       return res.status(404).json({ status: false, message: "User not found" });
@@ -2069,13 +2404,43 @@ export const createTransfer = asyncHandler(async (req, res) => {
     const userDetail = users[0];
     const tranferDetail = await Transfer.create({ userId, Employee: userDetail.fullName, branch: branch, Department: Department, TransferDate: TransferDate, Description: Description, organizationId });
 
-    await mailSender(userDetail.email, `Regarding Transfer`, `<div>
-       <div>Branch By: ${branch}</div>
-       <div>Department: ${Department}</div>
-       <div>Employee: ${Employee}</div>
-       <div>TransferDate: ${TransferDate}</div>
-       <div>Description: ${Description}</div>
-       </div>`);
+    await mailSender(
+      userDetail.email,
+      `Regarding Transfer`,
+      `
+  <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f6f9fc; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
+      <h2 style="color: #2c3e50; text-align: center;">Employee Transfer Details</h2>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Branch By:</td>
+          <td style="padding: 10px; color: #000;">${branch}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Department:</td>
+          <td style="padding: 10px; color: #000;">${Department}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Employee:</td>
+          <td style="padding: 10px; color: #000;">${userDetail.fullName}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Transfer Date:</td>
+          <td style="padding: 10px; color: #000;">${TransferDate}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${Description}</td>
+        </tr>
+      </table>
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is an automated message. Please do not reply to this email.</small>
+      </div>
+    </div>
+  </div>
+  `
+    );
+
 
     return res.status(200).json({
       status: true,
@@ -2098,7 +2463,10 @@ export const createTransfer = asyncHandler(async (req, res) => {
 
 export const getTransfer = asyncHandler(async (req, res) => {
   try {
-    const organizationId = req.user.organizationId;
+    const { organizationId } = req?.user;
+    if (!organizationId) {
+      return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+    }
     // Find notifications where the user ID is in the user array
     const transfer = await Transfer.find({ organizationId })
     // .select("-organizationId");
@@ -2128,7 +2496,7 @@ export const deleteTransfer = asyncHandler(async (req, res) => {
 
 export const updateTransfer = asyncHandler(async (req, res) => {
 
-  const { userId, Employee, branch, Department, TransferDate, Description, organizationId } = req.body;
+  const { userId, branch, Department, TransferDate, Description, organizationId } = req.body;
   const { id } = req.params;
 
   // const userDetail = await User.findOne({ fullName: Employee });
@@ -2151,13 +2519,44 @@ export const updateTransfer = asyncHandler(async (req, res) => {
       new: true,
     }
   );
-  await mailSender(userDetail.email, `Regarding Transfer`, `<div>
-       <div>Branch By: ${branch}</div>
-       <div>Department: ${Department}</div>
-       <div>Employee: ${Employee}</div>
-       <div>TransferDate: ${TransferDate}</div>
-       <div>Description: ${Description}</div>
-       </div>`);
+  await mailSender(
+    userDetail.email,
+    `Regarding Transfer`,
+    `
+  <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f6f9fc; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
+      <h2 style="color: #2c3e50; text-align: center;">Employee Transfer Details</h2>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Branch By:</td>
+          <td style="padding: 10px; color: #000;">${branch}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Department:</td>
+          <td style="padding: 10px; color: #000;">${Department}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Employee:</td>
+          <td style="padding: 10px; color: #000;">${userDetail.fullName}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Transfer Date:</td>
+          <td style="padding: 10px; color: #000;">${TransferDate}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${Description}</td>
+        </tr>
+      </table>
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is an automated message. Please do not reply to this email.</small>
+      </div>
+    </div>
+  </div>
+  `
+  );
+
+
 
 
   return res
@@ -2167,13 +2566,15 @@ export const updateTransfer = asyncHandler(async (req, res) => {
 
 // =====================holiday controller=============
 export const createHoliday = asyncHandler(async (req, res) => {
-  const { holidayName, startDate, endDate, organizationId } = req.body;
-
   try {
+    const { organizationId } = req?.user;
+    if (!organizationId) {
+      return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+    }
+    const { holidayName, startDate, endDate } = req.body;
+
     console.log('Creating holiday:', holidayName);
 
-    // Find active users and extract only necessary fields
-    // const users = await User.find({ isDeactivated: "No" }).select("email");
     const [users] = await db.execute(
       'SELECT email FROM users WHERE isDeactivated = ? AND organizationId = ? ORDER BY updatedAt DESC',
       ['No', organizationId]
@@ -2191,20 +2592,41 @@ export const createHoliday = asyncHandler(async (req, res) => {
     const emailList = users.map(user => user.email);
 
     // Prepare email body once
-    const emailSubject = "Regarding Holiday";
+    const emailSubject = "Regarding Holiday Update";
+
     const emailBody = `
-    <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f9fafb; border-radius: 8px; color: #333;">
-      <h2 style="text-align: center; color: #4f46e5;">Regarding Update</h2>
-      <div style="margin-top: 20px;">
-        <p style="font-size: 16px; margin: 8px 0;"><strong>Holiday Name:</strong> ${holidayName}</p>
-        <p style="font-size: 16px; margin: 8px 0;"><strong>Start Date:</strong> ${startDate}</p>
-        <p style="font-size: 16px; margin: 8px 0;"><strong>End Date:</strong> ${endDate}</p>
-      </div>
-      <div style="margin-top: 30px; text-align: center;">
-        <p style="font-size: 14px; color: #6b7280;">Please mark your calendar accordingly!</p>
+  <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; background-color: #f3f4f6; color: #111827;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+      <h2 style="text-align: center; color: #3b82f6; margin-bottom: 20px;">📢 Holiday Announcement</h2>
+
+      <p style="font-size: 16px; margin-bottom: 15px;">We would like to inform you about the following upcoming holiday:</p>
+
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="background-color: #f9fafb;">
+          <td style="padding: 10px; font-weight: bold;">Holiday Name:</td>
+          <td style="padding: 10px;">${holidayName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold;">Start Date:</td>
+          <td style="padding: 10px;">${startDate}</td>
+        </tr>
+        <tr style="background-color: #f9fafb;">
+          <td style="padding: 10px; font-weight: bold;">End Date:</td>
+          <td style="padding: 10px;">${endDate}</td>
+        </tr>
+      </table>
+
+      <div style="margin-top: 25px; text-align: center;">
+        <p style="font-size: 15px; color: #6b7280;">🗓️ Please mark your calendar and plan your work accordingly!</p>
       </div>
     </div>
-  `;
+  </div>
+`;
+
+
+
+    // Create the holiday after sending emails
+    const holiday = await Holiday.create({ holidayName, startDate, endDate, organizationId });
 
 
     // Send emails in parallel (better than awaiting one-by-one)
@@ -2215,8 +2637,6 @@ export const createHoliday = asyncHandler(async (req, res) => {
       )
     );
 
-    // Create the holiday after sending emails
-    const holiday = await Holiday.create({ holidayName, startDate, endDate, organizationId });
 
     return res.status(200).json({
       status: true,
@@ -2234,7 +2654,10 @@ export const createHoliday = asyncHandler(async (req, res) => {
 });
 export const getHoliday = asyncHandler(async (req, res) => {
   try {
-    const organizationId = req.user.organizationId;
+    const { organizationId } = req?.user;
+    if (!organizationId) {
+      return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+    }
     // Find notifications where the user ID is in the user array
     const holidays = await Holiday.find({ organizationId });
 
@@ -2296,20 +2719,37 @@ export const updateHoliday = asyncHandler(async (req, res) => {
     if (users.length) {
       const emailList = users.map(user => user.email);
 
-      const emailSubject = `Update Regarding ${holidayName || "Holiday"}`;
+      const emailSubject = "Regarding Holiday Update";
+
       const emailBody = `
-  <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f9fafb; border-radius: 8px; color: #333;">
-    <h2 style="text-align: center; color: #4f46e5;">Holiday Update</h2>
-    <div style="margin-top: 20px;">
-      <p style="font-size: 16px; margin: 8px 0;"><strong>Holiday Name:</strong> ${holidayName}</p>
-      <p style="font-size: 16px; margin: 8px 0;"><strong>Start Date:</strong> ${startDate}</p>
-      <p style="font-size: 16px; margin: 8px 0;"><strong>End Date:</strong> ${endDate}</p>
-    </div>
-    <div style="margin-top: 30px; text-align: center;">
-      <p style="font-size: 14px; color: #6b7280;">Please mark your calendar accordingly!</p>
+  <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; background-color: #f3f4f6; color: #111827;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+      <h2 style="text-align: center; color: #3b82f6; margin-bottom: 20px;">📢 Holiday Announcement</h2>
+
+      <p style="font-size: 16px; margin-bottom: 15px;">We would like to inform you about the following upcoming holiday:</p>
+
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="background-color: #f9fafb;">
+          <td style="padding: 10px; font-weight: bold;">Holiday Name:</td>
+          <td style="padding: 10px;">${holidayName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold;">Start Date:</td>
+          <td style="padding: 10px;">${startDate}</td>
+        </tr>
+        <tr style="background-color: #f9fafb;">
+          <td style="padding: 10px; font-weight: bold;">End Date:</td>
+          <td style="padding: 10px;">${endDate}</td>
+        </tr>
+      </table>
+
+      <div style="margin-top: 25px; text-align: center;">
+        <p style="font-size: 15px; color: #6b7280;">🗓️ Please mark your calendar and plan your work accordingly!</p>
+      </div>
     </div>
   </div>
 `;
+
 
 
       // Send all emails in parallel

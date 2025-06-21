@@ -25,18 +25,45 @@ export const createAward = async (req, res) => {
         const userDetail = users[0];
 
 
-        await mailSender(userDetail.email, `Regarding Award`, `<div>
-  <div>awardType: ${awardType}</div>
-  <div>date: ${date}</div>
-  <div>gift: ${gift}</div>
-  <div>description: ${description}</div>
-  <div>rating: ${rating}</div>
-  </div>`);
-
-
-
-
         const awardDetail = await Award.create({ userId, employee: userDetail.fullName, awardType, date, gift, description, rating, organizationId });
+
+        await mailSender(
+            userDetail.email,
+            `Regarding Award`,
+            `
+  <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f4f6f8; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <h2 style="color: #2e86de; text-align: center; margin-bottom: 25px;">🎖️ Award Notification</h2>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Award Type:</td>
+          <td style="padding: 10px; color: #000;">${awardType}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Date:</td>
+          <td style="padding: 10px; color: #000;">${date}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Gift:</td>
+          <td style="padding: 10px; color: #000;">${gift}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${description}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Rating:</td>
+          <td style="padding: 10px; color: #000;">${rating}</td>
+        </tr>
+      </table>
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is an automated message from the HR System. No reply is necessary.</small>
+      </div>
+    </div>
+  </div>
+  `
+        );
+
 
         return res.status(200).json({
             status: true,
@@ -96,14 +123,6 @@ export const updateAward = asyncHandler(async (req, res) => {
         userId, employee: userDetail.fullName, awardType, date, gift, description, rating
     });
 
-    await mailSender(userDetail.email, `Regarding Award`, `<div>
-  <div>awardType: ${awardType}</div>
-  <div>date: ${date}</div>
-  <div>gift: ${gift}</div>
-  <div>description: ${description}</div>
-  <div>rating: ${rating}</div>
-  </div>`);
-
     const updatePromotion = await Award.findByIdAndUpdate(
         id,
         {
@@ -113,6 +132,43 @@ export const updateAward = asyncHandler(async (req, res) => {
             new: true,
         }
     );
+    await mailSender(
+        userDetail.email,
+        `Regarding Award`,
+        `
+  <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f4f6f8; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <h2 style="color: #2e86de; text-align: center; margin-bottom: 25px;">🎖️ Award Notification</h2>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Award Type:</td>
+          <td style="padding: 10px; color: #000;">${awardType}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Date:</td>
+          <td style="padding: 10px; color: #000;">${date}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Gift:</td>
+          <td style="padding: 10px; color: #000;">${gift}</td>
+        </tr>
+        <tr style="background-color: #f9f9f9;">
+          <td style="padding: 10px; font-weight: bold; color: #555;">Description:</td>
+          <td style="padding: 10px; color: #000;">${description}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; font-weight: bold; color: #555;">Rating:</td>
+          <td style="padding: 10px; color: #000;">${rating}</td>
+        </tr>
+      </table>
+      <div style="margin-top: 30px; text-align: center; color: #888;">
+        <small>This is an automated message from the HR System. No reply is necessary.</small>
+      </div>
+    </div>
+  </div>
+  `
+    );
+
     return res
         .status(200)
         .json(new ApiResponse(200, updatePromotion, "Updated  Successfully"));

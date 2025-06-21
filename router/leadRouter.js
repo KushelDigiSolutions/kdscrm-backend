@@ -13,7 +13,7 @@ router.post("/createLead", createLead);
 router.post("/partTimeOfferApi", partTimeOfferApi);
 router.get("/getLeadById/:id", GetLeadById);
 router.get("/getOpenLeads/:id", GetOpenLeads);
-router.post("/createExpense", CreateExpense);
+router.post("/createExpense",isAuthenticated, CreateExpense);
 router.get("/getLeadByUser/:id", GetLeadByUser);
 router.get("/getDesiUser", GetDesiUser);
 router.get("/getDesiUser1", GetDesiUser1);
@@ -91,7 +91,7 @@ router.post("/changeExperienceLetterPer", changeExperienceLetterPer);
 
 
 // for  expense 
-router.post("/createExpense", CreateExpense);
+// router.post("/createExpense",isAuthenticated, CreateExpense);
 router.post("/deleteExpense/:expenseId", deleteExpense);
 router.post("/getExpense", isAuthenticated, getExpense);
 

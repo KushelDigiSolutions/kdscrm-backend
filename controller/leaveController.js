@@ -472,33 +472,73 @@ export const deleteAllLeaves = async () => {
 //   const
 // }
 
-export const getTotalLeaveCount = async () => {
-  // const data = await Leave.find({status:"Pending"});
+// export const getTotalLeaveCount = async ({ organizationId }) => {
+//   if (!organizationId) {
+//     return { success: false, message: "organizationId is required" };
+//   }
 
-  const data = await Leave.find({
-    $or: [
-      { status: "Pending" },
-      { status: "" },
-      { status: { $exists: false } }
-    ]
-  });
+//   const data = await Leave.find({
+//     organizationId,
+//     $or: [
+//       { status: "Pending" },
+//       { status: "" },
+//       { status: { $exists: false } },
+//     ],
+//   });
 
-  const data2 = await HalfDay.find({
-    $or: [
-      { status: "Pending" },
-      { status: "" },
-      { status: { $exists: false } }
-    ]
-  });
+//   const data2 = await HalfDay.find({
+//     organizationId,
+//     $or: [
+//       { status: "Pending" },
+//       { status: "" },
+//       { status: { $exists: false } },
+//     ],
+//   });
 
-  const totalLeave = data.length;
-  const halfDay = data2.length;
+//   const totalLeave = data.length;
+//   const halfDay = data2.length;
 
-  return {
-    success: true,
-    totalLeave, halfDay
+//   return {
+//     success: true,
+//     totalLeave,
+//     halfDay,
+//   };
+// };
+
+export const getTotalLeaveCount = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        message: "organizationId is required",
+      });
+    }
+
+    const leaves = await Leave.find({ organizationId });
+    const filterLeave = leaves.filter(leave => leave.status === "pending");
+    console.log(filterLeave)
+
+    const halfDays = await HalfDay.find({ organizationId });
+    const filterHalfDay = halfDays.filter(half => half.status === "pending");
+    console.log(filterHalfDay)
+
+    return res.status(200).json({
+      success: true,
+      totalLeave: filterLeave.length,
+      halfDay: filterHalfDay.length,
+    });
+
+  } catch (error) {
+    console.error("Error in getTotalLeaveCount:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
   }
-}
+};
+
 
 // For reject leave
 export const rejectLeaveHandler = async ({ fullName, id }) => {

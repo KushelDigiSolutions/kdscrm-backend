@@ -2,7 +2,12 @@ import Expense from "../models/Expense.js"
 
 export const CreateExpense = async (req, res) => {
    try {
-      const { title, itemCode, quantity, unit, purchasePrice, salesPrice, purchaseDate, category, organizationId } = req.body;
+      const {organizationId} = req?.user;
+      console.log(organizationId)
+      if (!organizationId) {
+         return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+      }
+      const { title, itemCode, quantity, unit, purchasePrice, salesPrice, purchaseDate, category } = req.body;
       const expenseDetail = await Expense.create({ title, itemCode, quantity, unit, purchasePrice, salesPrice, purchaseDate, category, organizationId });
 
       return res.status(200).json({
@@ -10,6 +15,7 @@ export const CreateExpense = async (req, res) => {
          expenseDetail
       })
    } catch (error) {
+      // console.log(error.message)
       return res.status(500).json({
          status: false,
          message: "Interval server error"
@@ -29,7 +35,11 @@ export const deleteExpense = async (req, res) => {
 
 export const getExpense = async (req, res) => {
    try {
-      const organizationId = req.user.organizationId
+      const { organizationId } = req.user
+      if (!organizationId) {
+         return res.status(500).json({ status: false, message: "Organization Problem" })
+      }
+      // console.log(organizationId)
       const expesnes = await Expense.find({ organizationId });
 
       return res.status(200).json({

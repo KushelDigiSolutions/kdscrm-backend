@@ -115,20 +115,7 @@ router.get("/getUserLeaveById/:id", isAuthenticated, async (req, res) => {
   }
 });
 
-router.get("/getToalLeaveCount", isAuthenticated, async (req, res) => {
-  try {
-    const data = await getTotalLeaveCount({
-      ...req.query, auth: req.user
-    });
-    if (data.success) {
-      res.json(data);
-    } else {
-      res.status(400).json(data);
-    }
-  } catch (error) {
-    console.log(error);
-  }
-})
+router.get("/getToalLeaveCount", isAuthenticated, getTotalLeaveCount)
 
 router.delete("/deleteLeave/:id", isAuthenticated, async (req, res) => {
   try {
@@ -210,7 +197,7 @@ router.post("/rejectHalfDay/:id", async (req, res) => {
 router.post("/monthlyLeave", monthlyLeave);
 // this is employe on leave routes 
 
-router.get("/getTodayLeave",isAuthenticated, GetTodayLeave);
+router.get("/getTodayLeave", isAuthenticated, GetTodayLeave);
 
 router.get("/fetchUserLeaves/:userId", FetchUserLeave);
 

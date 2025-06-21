@@ -21,12 +21,12 @@ router.get("/organization/:id", getOrganizationById);
 router.put("/updateOrganization/:id", updateOrganization);
 router.delete("/deleteOrganization/:id", deleteOrganization);
 
-router.post("/postPermissions", providePermissions);
+router.post("/postPermissions", isAuthenticated, providePermissions);
 router.get("/allPermissions", getAllPerissionRoles);
 router.get("/fetchAllPermissions", isAuthenticated, getOrganizationPermission);
 router.get("/getPermission", getPermission);
 router.put("/updatePermission", updatePermission)
-router.delete("/deletePermissionRole", deletePermissionRole);
+router.post("/deletePermissionRole", deletePermissionRole);
 
 router.post("/uploadDocuments/:userId", uploadUserDocuments);
 router.get("/getUserDocuments", getUserDocuments);

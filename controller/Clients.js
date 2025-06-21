@@ -31,10 +31,9 @@ const generateRefreshToken = async (userId) => {
   }
 };
 
-
 export const CreateClient = async (req, res) => {
   try {
-ç
+    ç
     const { Name, Email, Password, City, State, ZipCode, PhoneNumber, Country, Address } = req.body;
 
     // Validate required fields
@@ -301,43 +300,45 @@ export const clientNotification = async (req, res) => {
   try {
     const { organizationId } = req.user;
     const { title, description, client } = req.body;
-    console.log(title, description, client, organizationId)
 
-    if (!client) {
+    if (!client || !Array.isArray(client) || client.length === 0) {
       return res.status(400).json({
         status: false,
-        message: "Client ID is required",
+        message: "Client array is required",
       });
     }
 
-    const userPromises = client.map(async (userName) => {
-      const ClientDetail = await Clients.findOne({ Name: userName, organizationId });
-      return ClientDetail;
+    // Find clients by name + organizationId
+    const clientDocs = await Clients.find({
+      Name: { $in: client },
+      organizationId,
     });
 
-    const clientDetail = await Promise.all(userPromises);
-
-    if (!clientDetail) {
+    if (clientDocs.length === 0) {
       return res.status(404).json({
         status: false,
-        message: "Client not found",
+        message: "No matching clients found",
       });
     }
 
     const newNotification = new Notification({
       title,
       description,
-      user: clientDetail.map(user => user._id),
+      userIds: clientDocs.map(c => String(c._id)),
+      readBy: [],
+      date: Date.now(),
     });
 
     const savedNotification = await newNotification.save();
 
     return res.status(201).json({
       status: true,
-      message: "Notification created successfully",
+      message: "Client notification created successfully",
       data: savedNotification,
     });
+
   } catch (error) {
+    console.error("Error creating client notification:", error);
     return res.status(500).json({
       status: 500,
       message: "Internal server error",
@@ -357,16 +358,18 @@ export const getClientNotification = async (req, res) => {
       });
     }
 
-    const notifications = await Notification.find({ user: clientId })
-      .populate("user")
-      .lean();
+    const notifications = await Notification.find({
+      userIds: clientId,
+    }).sort({ date: -1 }).lean();
 
     return res.status(200).json({
       status: true,
-      message: "Notifications fetched successfully",
+      message: "Client notifications fetched successfully",
       data: notifications,
     });
+
   } catch (error) {
+    console.error("Error fetching client notifications:", error);
     return res.status(500).json({
       status: 500,
       message: "Internal server error",
@@ -374,8 +377,6 @@ export const getClientNotification = async (req, res) => {
     });
   }
 };
-
-
 
 export const DisableClient = async (req, res) => {
   try {

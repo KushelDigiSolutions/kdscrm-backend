@@ -144,31 +144,31 @@ router.delete("/deleteTrack/:id", deleteTracking);
 router.put("/updateTrack/:id", updateTracking);
 
 router.post('/postAnnouncement', isAuthenticated, postAnnouncement);
-router.get('/getAnnouncement',isAuthenticated, getAnnouncement);
+router.get('/getAnnouncement', isAuthenticated, getAnnouncement);
 router.delete("/deleteAnnouncement/:id", deleteAnnouncement);
 router.put("/updateAnnouncement/:id", isAuthenticated, updateAnnouncement);
 
-router.post('/postTermination', postTermination);
+router.post('/postTermination', isAuthenticated, postTermination);
 router.get('/getTermination', isAuthenticated, getTermination);
 router.delete("/deleteTermination/:id", deleteTermination);
 router.put("/updateTermination/:id", updateTermination);
 
-router.post('/postWarning', postWarning);
+router.post('/postWarning', isAuthenticated, postWarning);
 router.get('/getWarning', isAuthenticated, getWarning);
 router.delete("/deleteWarning/:id", deleteWarning);
 router.put("/updateWarning/:id", updateWarning);
 
-router.post('/postComplain', postComplain);
+router.post('/postComplain', isAuthenticated, postComplain);
 router.get('/getComplain', isAuthenticated, getComplain);
 router.delete("/deleteComplain/:id", deleteComplain);
 router.put("/updateComplain/:id", updateComplain);
 
-router.post('/postResignation', postResignation);
+router.post('/postResignation', isAuthenticated, postResignation);
 router.get('/getResignation', isAuthenticated, getResignation);
 router.delete("/deleteResignation/:id", deleteResignation);
 router.put("/updateResignation/:id", updateResignation);
 
-router.post('/postPromotion', postPromotion);
+router.post('/postPromotion', isAuthenticated, postPromotion);
 router.get('/getPromotion', isAuthenticated, getPromotion);
 router.delete("/deletePromotion/:id", deletePromotion);
 router.put("/updatePromotion/:id", updatePromotion);
@@ -183,12 +183,12 @@ router.get('/getList', getTrainingList);
 router.delete("/deleteList/:id", deleteTrainngList);
 router.put("/updateList/:id", updateTrainingList);
 
-router.post('/createTransfer', createTransfer);
+router.post('/createTransfer', isAuthenticated, createTransfer);
 router.get('/getTransfer', isAuthenticated, getTransfer);
 router.delete("/deleteTransfer/:id", deleteTransfer);
 router.put("/updateTransfer/:id", updateTransfer);
 
-router.post('/createHoliday', createHoliday);
+router.post('/createHoliday', isAuthenticated, createHoliday);
 router.get('/getHoliday', isAuthenticated, getHoliday);
 router.delete("/deleteHoliday/:id", deleteHoliday);
 router.put("/updateHoliday/:id", updateHoliday);
