@@ -2,15 +2,15 @@ import mongoose, { mongo } from 'mongoose';
 
 const taskModel = new mongoose.Schema({
 
-    LeadName:{
+    LeadName: {
         type: String,
     },
     FollowUpType: {
-        type: String , 
+        type: String,
     },
     Date: {
         type: Date,
-        default:Date.now()
+        default: Date.now()
     },
     Time: {
         type: String,
@@ -18,15 +18,14 @@ const taskModel = new mongoose.Schema({
     Remark: {
         type: String,
     },
-    LeadId:{
+    LeadId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref:"Lead"
-    }, 
-    user:{
-        type: mongoose.Schema.Types.ObjectId , 
-        ref:"User"
+        ref: "Lead"
+    },
+    user: {
+        type: String,
     }
- 
+
 });
 
 const task = mongoose.model('TaskModel', taskModel);

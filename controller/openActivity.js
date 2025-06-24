@@ -8,27 +8,63 @@ import LeadTimeline from "../models/LeadTimeline.js";
 
 
 export const CreateTask = async (req, res) => {
+  try {
+    const { LeadName, FollowUpType, Date, Time, Remark, LeadId } = req.body;
+    const userId = req.user.id;
+    const organizationId = req.user.organizationId;
 
-  const { LeadName, FollowUpType, Date, Time, Remark, LeadId, userId } = req.body;
+    if (!LeadName || !FollowUpType || !Date || !Time || !LeadId || !userId || !organizationId) {
+      return res.status(400).json({
+        status: false,
+        message: "Missing required fields",
+      });
+    }
 
-  const taskDetail = await Task.create({ LeadName, FollowUpType, Date, Time, Remark, LeadId, user: userId });
+    // Create Task
+    const taskDetail = await Task.create({
+      LeadName,
+      FollowUpType,
+      Date,
+      Time,
+      Remark,
+      LeadId,
+      user: userId,
+      organizationId, // if Task schema needs it
+    });
 
-  const newNotification = await Notification.create({ title: "New Remark", description: `Remark from ${LeadName}`, user: userId });
-  const leadTimeline = await LeadTimeline.create({
-    leadId: LeadId,
-    action: `FollowUpType updated to ${FollowUpType}`,
-    createdBy: req.user?.fullName || "System"
-  });
-  console.log(leadTimeline._id)
+    // Create Notification
+    const newNotification = await Notification.create({
+      title: "New Remark",
+      description: `Remark from ${LeadName}`,
+      user: userId,
+      organizationId, // ✅ FIXED here
+    });
 
+    // Add to Lead Timeline
+    const leadTimeline = await LeadTimeline.create({
+      leadId: LeadId,
+      action: `Follow-up type updated to ${FollowUpType}`,
+      createdBy: req.user.fullName || "System",
+      organizationId, // ✅ Optional: if required by schema
+    });
 
-  return res.status(200).json({
-    status: true,
-    message: "Successfuly done",
-    taskDetail
-  })
+    console.log("Lead Timeline ID:", leadTimeline._id);
 
-}
+    return res.status(200).json({
+      status: true,
+      message: "Successfully created task, notification, and timeline",
+      taskDetail,
+    });
+
+  } catch (error) {
+    console.error("CreateTask Error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
 
 export const EditTask = async (req, res) => {
 

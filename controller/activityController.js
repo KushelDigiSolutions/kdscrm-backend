@@ -60,7 +60,7 @@ export const getAllClocks = async (req, res) => {
     const clocks = await ActivityTracker.find().lean(); // .lean() for plain objects
 
     if (!clocks.length) {
-      return res.status(404).json({ status: false, message: "No clocks found" });
+      return res.status(200).json({ status: true, message: "No clocks found" });
     }
 
     // Step 2: Extract all unique userIds
@@ -103,8 +103,7 @@ export const getAllClocks = async (req, res) => {
 
 export const breakIn = async (req, res) => {
   try {
-    const { id } = req.query;
-    const { breaks } = req.body;
+    const { id } = req.params;
 
     // Step 1: Get ActivityTracker document from MongoDB
     const activity = await ActivityTracker.findById(id);
@@ -128,11 +127,7 @@ export const breakIn = async (req, res) => {
     await db.execute("UPDATE users SET isBreakIn = ? WHERE id = ?", [newStatus, userId]);
 
     // Step 4: Update breaks in ActivityTracker
-    const updatedClock = await ActivityTracker.findByIdAndUpdate(
-      id,
-      { breaks },
-      { new: true }
-    );
+    const updatedClock = await ActivityTracker.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
     return res.status(200).json({
       status: true,
