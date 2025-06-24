@@ -333,19 +333,28 @@ export const deleteAttendence = async (req, res) => {
   }
 }
 
+import moment from "moment"; // Install if not present
+
 export const getMonthlyWorkingHours = async (req, res) => {
   try {
     const { month, year, user } = req.query;
-    console.log(month, year, user)
-    const regex = new RegExp(`\\d{2}/${month}/${year}`);
 
+    // Create date range: from start of month to end of month
+    const startDate = new Date(`${year}-${month}-01T00:00:00.000Z`);
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + 1); // first of next month
+
+    // Get all clock records for the month
     const clock = await Clock.find({
       user: user,
-      Date: { $regex: regex }
+      Date: {
+        $gte: startDate.toISOString().slice(0, 10), // 'YYYY-MM-DD'
+        $lt: endDate.toISOString().slice(0, 10)
+      }
     });
 
     if (!clock.length) {
-      return res.status(400).json({
+      return res.status(404).json({
         success: false,
         message: "No clock entries found for this month."
       });
@@ -355,31 +364,24 @@ export const getMonthlyWorkingHours = async (req, res) => {
 
     const updatedClock = clock.map(entry => {
       let dailyHours = null;
+      try {
+        const clockIn = new Date(entry.clockIn);
+        const clockOut = new Date(entry.clockOut);
 
-      // Check if clockIn and clockOut are valid
-      if (
-        entry.clockIn &&
-        entry.clockOut &&
-        entry.clockIn !== "undefined" &&
-        entry.clockOut !== "undefined"
-      ) {
-        const dateParts = entry.Date.split('/');
-        const day = parseInt(dateParts[0], 10);
-        const month = parseInt(dateParts[1], 10) - 1;
-        const year = parseInt(dateParts[2], 10);
-
-        const clockInTime = new Date(year, month, day, ...convertTo24Hour(entry.clockIn));
-        let clockOutTime = new Date(year, month, day, ...convertTo24Hour(entry.clockOut));
-
-        // Handle overnight shifts
-        if (clockOutTime < clockInTime) {
-          clockOutTime.setDate(clockOutTime.getDate() + 1);
+        if (isNaN(clockIn.getTime()) || isNaN(clockOut.getTime())) {
+          throw new Error("Invalid date");
         }
 
-        const diffMs = clockOutTime - clockInTime;
-        dailyHours = diffMs / (1000 * 60 * 60); // milliseconds to hours
+        // Overnight shift handling
+        if (clockOut < clockIn) {
+          clockOut.setDate(clockOut.getDate() + 1);
+        }
 
+        const diffMs = clockOut - clockIn;
+        dailyHours = diffMs / (1000 * 60 * 60); // milliseconds to hours
         totalHours += dailyHours;
+      } catch (err) {
+        console.warn("Skipping entry due to error:", err.message);
       }
 
       return {
@@ -401,6 +403,27 @@ export const getMonthlyWorkingHours = async (req, res) => {
     });
   }
 };
+
+
+// 🔧 Time parsing function
+function parseTime(dateString, timeString) {
+  if (!timeString || timeString === "undefined") return null;
+
+  // If ISO format
+  if (moment(timeString, moment.ISO_8601, true).isValid()) {
+    return new Date(timeString);
+  }
+
+  // If clock is like "6:39:25 am" or "6:39 am"
+  let fullDate = `${dateString} ${timeString}`;
+  let date = moment(fullDate, ["DD/MM/YYYY hh:mm:ss a", "DD/MM/YYYY hh:mm a"], true);
+  if (date.isValid()) {
+    return date.toDate();
+  }
+
+  return null;
+}
+
 
 function convertTo24Hour(timeStr) {
   const [time, modifier] = timeStr.split(' ');
