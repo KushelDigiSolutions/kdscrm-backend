@@ -6,7 +6,7 @@ import { mailSender } from "../utils/SendMail2.js";
 import Notification from "../models/Notification/Notification.js"
 import Task from "../models/Task/Task.js";
 import projectwork from "../models/ProjectWork.js";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import { asyncHandler } from "../utils/AsyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -33,7 +33,7 @@ const generateRefreshToken = async (userId) => {
 
 export const CreateClient = async (req, res) => {
   try {
-    ç
+    const { organizationId } = req.user;
     const { Name, Email, Password, City, State, ZipCode, PhoneNumber, Country, Address } = req.body;
 
     // Validate required fields
@@ -44,7 +44,7 @@ export const CreateClient = async (req, res) => {
       });
     }
 
-    // Check if email already exists
+    // Check if email already exists in MySQL user table
     const [userRows] = await db.execute(
       'SELECT 1 FROM users WHERE email = ? AND organizationId = ?',
       [Email, organizationId]
@@ -53,24 +53,22 @@ export const CreateClient = async (req, res) => {
     if (userRows.length > 0) {
       return res.status(400).json({
         status: false,
-        message: "Email is already registered to users",
+        message: "Email is already registered to a user",
       });
     }
 
-    // Check if email already exists
-    const existingClient = await Clients.findOne({ Email, Name })
+    // Check if client already exists in MongoDB
+    const existingClient = await Clients.findOne({ Email, Name });
     if (existingClient) {
       return res.status(400).json({
         status: false,
-        message: "Email is already registered",
+        message: "Client with this email and name already exists",
       });
     }
-    const plainTextPassword = Password;
 
-
-
-    // Hash the password before saving
-    const hashedPassword = await bcrypt.hash(Password, 10);
+    // Ensure password is string before hashing
+    const plainTextPassword = String(Password).trim();
+    const hashedPassword = await bcrypt.hash(plainTextPassword, 10);
 
     // Create the client
     const clientDetail = await Clients.create({
@@ -83,95 +81,54 @@ export const CreateClient = async (req, res) => {
       PhoneNumber,
       Country,
       Address,
-      organizationId
+      organizationId,
     });
 
-    const message = `
-   <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-  <p>Dear <strong>${Name}</strong>,</p>
-
-  <p>Welcome to <strong>Kushel Digi Solutions!</strong> We’re delighted to have you on board. Your account has been successfully created on <strong>${clientDetail.createdAt}</strong>.</p>
-
-  <p>Below are your login details:</p>
-
-  <ul>
-    <li><strong>Username:</strong> ${Email}</li>
-    <li><strong>Temporary Password:</strong> ${plainTextPassword}</li>
-  </ul>
-
-  <p>To access your account, please log in using the link below:</p>
-
-  <p>
-    <a href="https://hrms.kusheldigi.com/login" 
-       style="background-color: #007bff; color: #fff; padding: 10px 15px; text-decoration: none; border-radius: 5px; display: inline-block;">
-      Login Here
-    </a>
-  </p>
-
-  <p><strong>For security reasons, we strongly recommend changing your password upon first login.</strong></p>
-
-  <p>If you have any questions or need assistance, feel free to reach out to our support team.</p>
-
-  <p>We look forward to working with you!</p>
-
-  <br>
-  <p><strong>Best Regards,</strong></p>
-  <p><strong>Kushel Digi Solutions Team</strong></p>
-</div>
-
+    const emailTemplate = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <p>Dear <strong>${Name}</strong>,</p>
+        <p>Welcome to <strong>Kushel Digi Solutions!</strong> We’re delighted to have you on board. Your account has been successfully created on <strong>${clientDetail.createdAt}</strong>.</p>
+        <p>Below are your login details:</p>
+        <ul>
+          <li><strong>Username:</strong> ${Email}</li>
+          <li><strong>Temporary Password:</strong> ${plainTextPassword}</li>
+        </ul>
+        <p>
+          <a href="https://hrms.kusheldigi.com/login" 
+             style="background-color: #007bff; color: #fff; padding: 10px 15px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            Login Here
+          </a>
+        </p>
+        <p><strong>For security reasons, please change your password upon first login.</strong></p>
+        <p>If you have any questions, feel free to contact our support team.</p>
+        <p>We look forward to working with you!</p>
+        <br />
+        <p><strong>Best Regards,</strong></p>
+        <p><strong>Kushel Digi Solutions Team</strong></p>
+      </div>
     `;
 
-    const html = `
-   <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-  <p>Dear <strong>${Name}</strong>,</p>
-
-  <p>Welcome to <strong>Kushel Digi Solutions!</strong> We’re delighted to have you on board. Your account has been successfully created on <strong>${clientDetail.createdAt}</strong>.</p>
-
-  <p>Below are your login details:</p>
-
-  <ul>
-    <li><strong>Username:</strong> ${Email}</li>
-    <li><strong>Temporary Password:</strong> ${plainTextPassword}</li>
-  </ul>
-
-  <p>To access your account, please log in using the link below:</p>
-
-  <p>
-    <a href="https://hrms.kusheldigi.com/login" 
-       style="background-color: #007bff; color: #fff; padding: 10px 15px; text-decoration: none; border-radius: 5px; display: inline-block;">
-      Login Here
-    </a>
-  </p>
-
-  <p><strong>For security reasons, we strongly recommend changing your password upon first login.</strong></p>
-
-  <p>If you have any questions or need assistance, feel free to reach out to our support team.</p>
-
-  <p>We look forward to working with you!</p>
-
-  <br>
-  <p><strong>Best Regards,</strong></p>
-  <p><strong>Kushel Digi Solutions Team</strong></p>
-</div>
-
-    `;
-
-    await SendEmail(Email, "Welcome to Kushel Digi Solutions – Your Account Details", message, html);
+    await SendEmail(
+      Email,
+      "Welcome to Kushel Digi Solutions – Your Account Details",
+      emailTemplate,
+      emailTemplate
+    );
 
     return res.status(201).json({
       status: true,
-      message: "done success",
-      data: clientDetail
-    })
+      message: "Client created and email sent successfully",
+      data: clientDetail,
+    });
 
   } catch (error) {
-    console.log(error);
+    console.error("CreateClient error:", error);
     return res.status(500).json({
       status: false,
-      message: "Internal server error "
-    })
+      message: "Internal server error",
+    });
   }
-}
+};
 
 export const EditClient = async (req, res) => {
   try {

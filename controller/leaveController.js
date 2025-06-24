@@ -29,7 +29,7 @@ export const postLeave = async ({ auth, type, from, to, days, reason }) => {
       <div>
         <div><strong>From:</strong> ${auth.fullName}</div>
         <div><strong>To:</strong> ${to}</div>
-        <div><strong>Days:</strong> ${days}</div>
+        <div><strong>Days:</strong> ${days+1}</div>
         <div><strong>Reason:</strong> ${reason}</div>
       </div>
     `).catch(err => console.error("Email sending failed:", err));
