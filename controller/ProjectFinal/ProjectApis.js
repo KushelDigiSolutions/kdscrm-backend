@@ -734,6 +734,7 @@ export const getProjectTaskTimelines = async (req, res) => {
 export const uploadProjectFile = async (req, res) => {
   try {
     const { projectId, uploadedBy } = req.body;
+    console.log(projectId, uploadedBy)
 
     if (!projectId || !req.files || !uploadedBy) {
       return res.status(400).json({

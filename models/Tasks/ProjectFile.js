@@ -4,7 +4,7 @@ const projectFileSchema = new mongoose.Schema(
   {
     projectId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Projects", 
+      ref: "Projects",
       required: true,
     },
     fileName: {
@@ -16,9 +16,8 @@ const projectFileSchema = new mongoose.Schema(
       required: true,
     },
     uploadedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User", 
-      required: true,
+      type: String,
+      require: true
     },
   },
   { timestamps: true }

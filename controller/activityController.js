@@ -69,7 +69,7 @@ export const getAllClocks = async (req, res) => {
     // Step 3: Fetch users from SQL in one query
     const placeholders = userIds.map(() => '?').join(',');
     const [users] = await db.execute(
-      `SELECT id, fullName, email, isBreakIn, profileImage FROM users WHERE id IN (${placeholders})`,
+      `SELECT * FROM users WHERE id IN (${placeholders})`,
       userIds
     );
 
