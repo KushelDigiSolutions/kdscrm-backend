@@ -129,6 +129,7 @@ export const editLead = async (req, res) => {
             LinkedIn,
             DescriptionInfo,
             date,
+            status,
             dynamicFields
         } = req.body;
 
@@ -169,6 +170,7 @@ export const editLead = async (req, res) => {
                 Country,
                 DescriptionInfo,
                 date,
+                status,
                 dynamicFields
             },
             { new: true }

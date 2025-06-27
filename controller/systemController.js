@@ -355,7 +355,7 @@ export const updateDepartment = asyncHandler(async (req, res) => {
 
 export const getDepartments = asyncHandler(async (req, res) => {
   try {
-    const organizationId = req.user.organizationId
+    const { organizationId } = req.user;
     const data = await Department.find({ organizationId });
 
     return res
@@ -512,9 +512,9 @@ export const updateDesignation = asyncHandler(async (req, res) => {
 });
 
 export const getDesignation = asyncHandler(async (req, res) => {
+  const { organizationId } = req.user;
 
-
-  const data = await Designation.find({});
+  const data = await Designation.find({ organizationId });
 
   return res
     .status(200)

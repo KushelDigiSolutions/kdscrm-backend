@@ -179,7 +179,6 @@
 
 
 
----- Table for Organization ----
 CREATE TABLE organizations (
   id CHAR(36) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
@@ -187,9 +186,10 @@ CREATE TABLE organizations (
   userLimit INT NOT NULL,
   imageUrl VARCHAR(255),
   isDeactivated VARCHAR(20) DEFAULT 'No'
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
----- Table for permission_roles ----
 CREATE TABLE permission_roles (
   id CHAR(36) PRIMARY KEY,
   name VARCHAR(255),
@@ -249,7 +249,6 @@ CREATE TABLE permission_roles (
   FOREIGN KEY (organizationId) REFERENCES organizations(id)
 );
 
----- Table for users ----
 CREATE TABLE users (
   id CHAR(36) PRIMARY KEY,
   fullName VARCHAR(255),
@@ -321,20 +320,21 @@ CREATE TABLE users (
   enable2fa BOOLEAN DEFAULT FALSE,
   secrets2fa VARCHAR(255),
   organizationId CHAR(36),
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   FOREIGN KEY (organizationId) REFERENCES organizations(id) ON DELETE CASCADE,
   FOREIGN KEY (permissionRoleId) REFERENCES permission_roles(id) ON DELETE SET NULL
 );
 
----- Table for documents ----
 CREATE TABLE documents (
   id CHAR(36) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   url VARCHAR(255) NOT NULL,
   userId CHAR(36),
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
 );
 
----- Table for assets ----
 CREATE TABLE assets (
   id CHAR(36) PRIMARY KEY,
   employee VARCHAR(255),
@@ -347,51 +347,43 @@ CREATE TABLE assets (
   status VARCHAR(50) DEFAULT 'Pending',
   userId CHAR(36),
   organizationId CHAR(36),
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (organizationId) REFERENCES organizations(id)
 );
 
-CREATE TABLE organizations (
-  id CHAR(36) PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  imageUrl VARCHAR(255),
-  isDeactivated VARCHAR(20) DEFAULT 'No',
-  default_currency VARCHAR(10) DEFAULT 'INR',
-  country VARCHAR(100),
-  state VARCHAR(100),
-  city VARCHAR(100),
-  address_line1 VARCHAR(255),
-  address_line2 VARCHAR(255),
-  zip_code VARCHAR(20),  
-  phone VARCHAR(20),
-  website VARCHAR(255),
-  gstin VARCHAR(20),
-  pan VARCHAR(20),
-  tan VARCHAR(20),
-  tin VARCHAR(50),
-  lst VARCHAR(50),
-  cst VARCHAR(50),
-  fssai_no VARCHAR(50),
-  service_tax_no VARCHAR(50),
-  tax_inclusive BOOLEAN DEFAULT FALSE,
-  transfer_type VARCHAR(50),
-  bank_name VARCHAR(100),
-  branch_name VARCHAR(100),
-  account_number VARCHAR(50),
-  ifsc_code VARCHAR(20),
-  swift_code VARCHAR(20),
-  upi_id VARCHAR(50),
-  account_holder_name VARCHAR(100),
-  contact_person_name VARCHAR(255)
-);
-
-
-CREATE TABLE users (
-  first_name VARCHAR(255),
-  last_name VARCHAR(255),
-  email VARCHAR(255) UNIQUE,
-  password VARCHAR(255),
-  organizationId CHAR(36),
-  FOREIGN KEY (organizationId) REFERENCES organizations(id)
-)
+-- CREATE TABLE organizations (
+--   id CHAR(36) PRIMARY KEY,
+--   name VARCHAR(255) NOT NULL,
+--   email VARCHAR(255) NOT NULL UNIQUE,
+--   imageUrl VARCHAR(255),
+--   isDeactivated VARCHAR(20) DEFAULT 'No',
+--   default_currency VARCHAR(10) DEFAULT 'INR',
+--   country VARCHAR(100),
+--   state VARCHAR(100),
+--   city VARCHAR(100),
+--   address_line1 VARCHAR(255),
+--   address_line2 VARCHAR(255),
+--   zip_code VARCHAR(20),  
+--   phone VARCHAR(20),
+--   website VARCHAR(255),
+--   gstin VARCHAR(20),
+--   pan VARCHAR(20),
+--   tan VARCHAR(20),
+--   tin VARCHAR(50),
+--   lst VARCHAR(50),
+--   cst VARCHAR(50),
+--   fssai_no VARCHAR(50),
+--   service_tax_no VARCHAR(50),
+--   tax_inclusive BOOLEAN DEFAULT FALSE,
+--   transfer_type VARCHAR(50),
+--   bank_name VARCHAR(100),
+--   branch_name VARCHAR(100),
+--   account_number VARCHAR(50),
+--   ifsc_code VARCHAR(20),
+--   swift_code VARCHAR(20),
+--   upi_id VARCHAR(50),
+--   account_holder_name VARCHAR(100),
+--   contact_person_name VARCHAR(255)
+-- );

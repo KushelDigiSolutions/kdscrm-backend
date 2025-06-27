@@ -690,38 +690,68 @@ export const updateIndicator = asyncHandler(async (req, res) => {
 });
 
 export const postApprisal = asyncHandler(async (req, res) => {
+  try {
+    const { Branch, SelectMonth, userId, remarks, organizationId } = req.body;
 
+    // 🔍 Step 1: Validate input
+    if (!Branch || !SelectMonth || !userId || !organizationId) {
+      return res.status(400).json({
+        status: false,
+        message: "Branch, Month, userId, and organizationId are required",
+      });
+    }
 
-  const { Branch, SelectMonth, userId, remarks, organizationId } = req.body;
+    // 🔍 Step 2: Fetch user details from DB
+    const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
+    if (!users || users.length === 0) {
+      return res.status(404).json({
+        status: false,
+        message: "Employee not found",
+      });
+    }
 
+    const userDetail = users[0];
 
-  // retreiving all the user of same department and designation 
-  // Fetch the user 
-  const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
-  if (users.length === 0) {
-    return res.status(404).json({ status: false, message: "Complain initiator not found" });
+    // 📨 Step 3: Send mail (non-blocking: failsafe)
+    try {
+      await mailSender(
+        userDetail.email,
+        "Regarding Create Apprisal",
+        `<div>
+          <div><strong>Branch:</strong> ${Branch}</div>
+          <div><strong>Month:</strong> ${SelectMonth}</div>
+          <div><strong>Employee:</strong> ${userDetail.fullName}</div>
+          <div><strong>Remarks:</strong> ${remarks || "N/A"}</div>
+        </div>`
+      );
+    } catch (mailErr) {
+      console.warn("Email send failed:", mailErr.message);
+      // Don't return here – continue with creation
+    }
+
+    // 📝 Step 4: Create apprisal
+    const apprisal = await Apprisal.create({
+      userId,
+      Branch: Branch.trim(),
+      SelectMonth: SelectMonth.trim(),
+      Employee: userDetail.fullName.trim(),
+      remarks: remarks?.trim() || "",
+      organizationId,
+    });
+
+    return res.status(200).json(
+      new ApiResponse(200, apprisal, "Apprisal posted successfully")
+    );
+
+  } catch (error) {
+    console.error("Apprisal Error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal server error while posting apprisal",
+    });
   }
-  const userDetail = users[0];
-
-  await mailSender(userDetail.email, `Regarding Create Apprisal`, `<div>
-    <div>Branch By: ${Branch}</div>
-    <div>SelectMonth: ${SelectMonth}</div>
-    <div>Employee: ${userDetail.fullName}</div>
-    <div>remarks: ${remarks}</div>
-    </div>`);
-
-  const apprisal = await Apprisal.create({
-    userId,
-    Branch,
-    SelectMonth,
-    Employee: userDetail.fullName,
-    remarks,
-    organizationId
-  });
-  return res
-    .status(200)
-    .json(new ApiResponse(200, apprisal, " successfully posted"));
 });
+
 
 export const getApprisal = asyncHandler(async (req, res) => {
   const organizationId = req.user.organizationId

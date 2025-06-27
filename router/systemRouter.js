@@ -74,7 +74,7 @@ router.put("/updateDesignation/:id", updateDesignation);
 
 router.get("/getDesignations/:id", getDesignations);
 router.get("/getEmployeess/:id", getEmployess);
-router.get("/getDesignation", getDesignation);
+router.get("/getDesignation",isAuthenticated, getDesignation);
 
 router.delete("/deleteDesignation/:id", deleteDesignation);
 
