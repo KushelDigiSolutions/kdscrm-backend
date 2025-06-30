@@ -29,7 +29,7 @@ export const postLeave = async ({ auth, type, from, to, days, reason }) => {
       <div>
         <div><strong>From:</strong> ${auth.fullName}</div>
         <div><strong>To:</strong> ${to}</div>
-        <div><strong>Days:</strong> ${days+1}</div>
+        <div><strong>Days:</strong> ${days + 1}</div>
         <div><strong>Reason:</strong> ${reason}</div>
       </div>
     `).catch(err => console.error("Email sending failed:", err));
@@ -386,7 +386,15 @@ export const updateLeave = async ({ auth, employeeName, id, leaveType, from, to,
 export const getUserLeaves = async ({ auth }) => {
   // 1. Fetch all leaves (or filter by auth.id if needed)
   const leaves = await Leave.find({ organizationId: auth.organizationId }); // or { user: auth.id.toString() }
-  // console.log(leaves)
+  leaves.forEach(async (e) => {
+    let i = 0
+    if (e.status === "pending") {
+      console.log(e.status, i)
+      i++
+      e.status = "pending"
+      await e.save();
+    }
+  })
   if (leaves.length < 1) {
     return {
       success: true,
@@ -507,7 +515,8 @@ export const deleteAllLeaves = async () => {
 
 export const getTotalLeaveCount = async (req, res) => {
   try {
-    const { organizationId } = req.user;
+    const { organizationId, id } = req.user;
+    console.log(organizationId, id)
 
     if (!organizationId) {
       return res.status(400).json({
@@ -516,18 +525,18 @@ export const getTotalLeaveCount = async (req, res) => {
       });
     }
 
-    const leaves = await Leave.find({ organizationId });
+    const leaves = await Leave.find({ organizationId, user:id });
     const filterLeave = leaves.filter(leave => leave.status === "pending");
-    console.log(filterLeave)
+    console.log(leaves)
 
     const halfDays = await HalfDay.find({ organizationId });
     const filterHalfDay = halfDays.filter(half => half.status === "pending");
-    console.log(filterHalfDay)
+    console.log(halfDays)
 
     return res.status(200).json({
       success: true,
-      totalLeave: filterLeave.length,
-      halfDay: filterHalfDay.length,
+      totalLeave: leaves.length,
+      halfDay: halfDays.length,
     });
 
   } catch (error) {

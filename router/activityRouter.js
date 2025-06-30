@@ -15,7 +15,7 @@ import {
 const router = Router();
 
 router.post("/postActivity", isAuthenticated, postActivity);
-router.get("/getAllClocks", getAllClocks);
+router.get("/getAllClocks", isAuthenticated, getAllClocks);
 router.put("/breakIn/:id", breakIn);
 router.get("/getClockByUser", isAuthenticated, getClockByUser)
 

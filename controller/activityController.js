@@ -56,8 +56,12 @@ export const postActivity = async (req, res) => {
 
 export const getAllClocks = async (req, res) => {
   try {
+    const { organizationId } = req?.user;
+    if (!organizationId) {
+      return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+    }
     // Step 1: Get all ActivityTracker records
-    const clocks = await ActivityTracker.find().lean(); // .lean() for plain objects
+    const clocks = await ActivityTracker.find({ organizationId }).lean(); // .lean() for plain objects
 
     if (!clocks.length) {
       return res.status(200).json({ status: true, message: "No clocks found" });

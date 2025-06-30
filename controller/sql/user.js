@@ -25,7 +25,7 @@ function removeUndefined(obj) {
 
 export const createOrganization = async (req, res) => {
     try {
-        const { name, email, userLimit, imageUrl } = req.body;
+        const { name, email, userLimit, imageUrl, imageUrl2 } = req.body;
         if (!name || !email || userLimit == null) {
             return res.status(400).json({ message: 'Required fields are missing' });
         }
@@ -36,7 +36,7 @@ export const createOrganization = async (req, res) => {
         if (existing.length) {
             return res.status(400).json({ message: 'Email already registered' });
         }
-        const data = removeUndefined({ name, email, userLimit, imageUrl });
+        const data = removeUndefined({ name, email, userLimit, imageUrl, imageUrl2 });
 
         // Generate a unique ID
         let unique = false;
@@ -96,10 +96,10 @@ export const getOrganizationById = async (req, res) => {
 
 export const updateOrganization = async (req, res) => {
     const { id } = req.params;
-    const { name, email, userLimit, imageUrl, isDeactivated } = req.body;
+    const { name, email, userLimit, imageUrl, imageUrl2, isDeactivated } = req.body;
 
     try {
-        const data = removeUndefined({ name, email, userLimit, imageUrl, isDeactivated });
+        const data = removeUndefined({ name, email, userLimit, imageUrl, isDeactivated, imageUrl2 });
         console.log(data);
 
         const fields = Object.keys(data);
@@ -762,11 +762,12 @@ export const createAdmin = async (req, res) => {
             leaveNumber
         } = req.body;
 
+        // Required field validation
         if (!organizationId || !email || !fullName || !password) {
             return res.status(400).json({ status: false, message: "Required fields are missing" });
         }
 
-        // Check org exists
+        // Validate Organization
         const [orgRows] = await db.execute('SELECT userLimit FROM organizations WHERE id = ?', [organizationId]);
         if (orgRows.length === 0) {
             return res.status(400).json({ status: false, message: "Invalid organization ID" });
@@ -783,7 +784,7 @@ export const createAdmin = async (req, res) => {
             return res.status(400).json({ status: false, message: "User limit exceeded for this organization" });
         }
 
-        // Check email
+        // Check if email already exists in the same org
         const [userRows] = await db.execute(
             'SELECT 1 FROM users WHERE email = ? AND organizationId = ?',
             [email, organizationId]
@@ -792,21 +793,23 @@ export const createAdmin = async (req, res) => {
             return res.status(400).json({ status: false, message: "Email already exists" });
         }
 
-        // Validate PermissionRole
+        // Validate Permission Role
+        let permissionRoleId = null;
         if (PermissionRole && PermissionRole !== "Select Role") {
             const [roleRows] = await db.execute(
-                'SELECT 1 FROM permission_roles WHERE id = ? AND organizationId = ?',
+                'SELECT id FROM permission_roles WHERE id = ? AND organizationId = ?',
                 [PermissionRole, organizationId]
             );
             if (roleRows.length === 0) {
                 return res.status(400).json({
                     status: false,
-                    message: "Permission role does not belong to this organization",
+                    message: "Permission role does not belong to this organization or does not exist",
                 });
             }
+            permissionRoleId = roleRows[0].id;
         }
 
-        // Unique ID
+        // Generate unique user ID
         let unique = false;
         let generatedId;
         while (!unique) {
@@ -815,9 +818,10 @@ export const createAdmin = async (req, res) => {
             if (!existingId.length) unique = true;
         }
 
-        // Hash password
+        // Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        // Prepare insert data
         const data = removeUndefined({
             id: generatedId,
             fullName,
@@ -871,13 +875,11 @@ export const createAdmin = async (req, res) => {
             leaveNumber,
             employeeCode,
             organizationId,
-            role: "ADMIN", // Force ADMIN role
-            permissionRoleId: PermissionRole !== "Select Role" ? PermissionRole : null,
+            role: "ADMIN",
+            permissionRoleId: permissionRoleId,
         });
 
-        delete data.PermissionRole;
-
-        // Insert SQL
+        // Insert into MySQL
         const fields = Object.keys(data);
         const placeholders = fields.map(() => '?').join(', ');
         const values = fields.map(key => data[key]);
@@ -885,22 +887,19 @@ export const createAdmin = async (req, res) => {
 
         await db.execute(query, values);
 
-        // Email content
+        // Email content (optional)
         const html = `
-      <div>
-        Welcome Admin! Your HRMS admin account has been successfully created.
-        <br/>
-        Email: ${email}<br/>
-        Temporary Password: ${password}<br/>
-        <br/>
-        Login here: <a href="https://hrms.kusheldigi.com/login">HRMS Login</a><br/>
-        Please change your password after logging in.
-        <br/><br/>
-        Regards,<br/>Kushel Digi Solutions
-      </div>
-    `;
+        <div>
+            Welcome Admin! Your HRMS admin account has been successfully created.<br/>
+            <strong>Email:</strong> ${email}<br/>
+            <strong>Temporary Password:</strong> ${password}<br/>
+            <br/>
+            <a href="https://hrms.kusheldigi.com/login">Login here</a><br/>
+            Please change your password after logging in.<br/><br/>
+            Regards,<br/>Kushel Digi Solutions
+        </div>`;
 
-        await SendEmail(email, "Your Admin Account is Ready", html, html);
+        // await SendEmail(email, "Your Admin Account is Ready", html, html); // Uncomment if email sending configured
 
         return res.status(201).json({
             status: true,
@@ -987,6 +986,7 @@ export const UpdateUser = async (req, res) => {
             const saltRounds = 10;
             hashedPassword = await bcrypt.hash(password, saltRounds);
         }
+        console.log(profileImage)
 
         // Prepare update data
         const data = removeUndefined({
@@ -1039,7 +1039,7 @@ export const UpdateUser = async (req, res) => {
             employeeCode,
             leaveNumber
         });
-
+        console.log(data.profileImage, " at 1043")
         // Set role from department
         if (department) {
             data.role = department === "Hr" ? "HR" : department === "Manager" ? "MANAGER" : "EMPLOYEE";
@@ -1371,6 +1371,14 @@ export const userLogin = async (req, res) => {
         });
     }
 };
+
+export const fetchUserDetail = async (req, res) => {
+    try {
+
+    } catch (error) {
+
+    }
+}
 
 /* =================== Users Documents ================================*/
 

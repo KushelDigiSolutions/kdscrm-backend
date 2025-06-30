@@ -16,6 +16,7 @@ import base32 from "hi-base32";
 import * as OTPAuth from "otpauth";
 import QRCode from "qrcode";
 import Clients from "../models/Tasks/Clients.js";
+import db from "../db/sql_conn.js"
 
 // Store OTP in MongoDB with an expiration time of 10 minutes
 export const storeOTPInDatabase = async (email, otp) => {
@@ -96,29 +97,30 @@ const deleteExistingOTP = async (email) => {
 
 
 export const forgotPasswordProcess = asyncHandler(async (req, res) => {
-  const { email } = req.body;
+  try {
+    const { email } = req.body;
 
-  // const 
-  const Client = await Clients.findOne({ Email: email })
-  if (Client) {
-    return res.status(400).json({
-      success: false,
-      message: "Please Contact Your Admin to Reset Password"
-    })
-  } else {
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ success: false, message: 'Invalid Email' });
+    // Check if email belongs to a Client
+    const Client = await Clients.findOne({ Email: email });
+    if (Client) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please contact your admin to reset the password.',
+      });
     }
 
-    const otp = generateOTP();
+    // Check if user exists by email (not id!)
+    const [userRows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+    if (userRows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid email address.' });
+    }
 
+    const otp = generateOTP(); // Generate a 6-digit OTP or whatever logic you use
 
-    // Remove any existing OTP for this email
+    // Delete existing OTP for this email
     await deleteExistingOTP(email);
 
-    // Store new OTP in database
+    // Store new OTP in DB
     await storeOTPInDatabase(email, otp);
 
     // Send OTP via email
@@ -128,6 +130,12 @@ export const forgotPasswordProcess = asyncHandler(async (req, res) => {
       success: true,
       message: `OTP has been sent to ${email}. It will expire in 10 minutes.`,
     });
+  } catch (error) {
+    console.error('Error in forgotPasswordProcess:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal Server Error. Please try again later.',
+    });
   }
 });
 
@@ -135,23 +143,40 @@ export const forgotPasswordProcess = asyncHandler(async (req, res) => {
 export const resetPassword = asyncHandler(async (req, res) => {
   const { email, otp, newPassword } = req.body;
 
-  const otpValidationResult = await validateOTPFromDatabase(email, otp);
-  if (!otpValidationResult.success) {
-    return res.status(400).json(otpValidationResult);
-  }
+  try {
+    // 1. Validate OTP
+    const otpValidationResult = await validateOTPFromDatabase(email, otp);
+    if (!otpValidationResult.success) {
+      return res.status(400).json(otpValidationResult);
+    }
 
-  const user = await User.findOne({ email });
-  if (!user) {
-    return res.status(400).json({ success: false, message: 'User not found' });
-  }
+    // 2. Check if user exists
+    const [userRows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+    if (userRows.length === 0) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
 
-  user.password = newPassword;  // Hash the password before saving in production
-  await user.save();
-  await OTP.deleteOne({ email });
-  res.status(200).json({
-    success: true,
-    message: 'Password has been reset successfully',
-  });
+    // 3. Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 4. Update password in DB
+    await db.execute('UPDATE users SET password = ? WHERE email = ?', [hashedPassword, email]);
+
+    // 5. Delete OTP entry from table
+    await OTP.deleteOne({ email });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password has been reset successfully',
+    });
+
+  } catch (error) {
+    console.error("Error in resetPassword:", error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
 });
 
 
@@ -160,21 +185,30 @@ export const Enable2FA = async (req, res) => {
     const { userId } = req.body;
     console.log("Enable2FA called for:", userId);
 
-    const user = await User.findOne({ _id: userId });
-
-    if (!user) {
-      return res.status(404).json({
-        status: "fail",
-        message: "User does not exist"
-      });
+    // Check if user exists
+    const [userRows] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
+    if (userRows.length === 0) {
+      return res.status(404).json({ status: false, message: "User not found" });
     }
+    const user = userRows[0];
+    // const user = await User.findOne({ _id: userId });
+
+    // if (!user) {
+    //   return res.status(404).json({
+    //     status: "fail",
+    //     message: "User does not exist"
+    //   });
+    // }
 
     // Step 1: Generate Base32 secret manually using crypto
     const randomBuffer = crypto.randomBytes(20); // 20 bytes = 160 bits
     const base32_secret = new OTPAuth.Secret({ buffer: randomBuffer }).base32;
 
     // Step 2: Save secret to DB
-    await User.updateOne({ _id: userId }, { secrets2fa: base32_secret });
+    // await User.updateOne({ _id: userId }, { secrets2fa: base32_secret });
+
+    // 4. Update password in DB
+    await db.execute('UPDATE users SET secrets2fa = ? WHERE id = ?', [secrets2fa, userId]);
 
     // Step 3: Create OTPAuth URL
     const issuer = "hrms.kusheldigi.com";
@@ -220,14 +254,20 @@ const generateBase32Secret = () => {
 
 export const Verify2fa = async (req, res) => {
   const { userId, token } = req.body;
-  const user = await User.findOne({ _id: userId });
 
-  if (!user) {
-    return res.status(404).json({
-      status: "fail",
-      message: "User does not exist"
-    });
+  const [userRows] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
+  if (userRows.length === 0) {
+    return res.status(404).json({ status: false, message: "User not found" });
   }
+  const user = userRows[0];
+  // const user = await User.findOne({ _id: userId });
+
+  // if (!user) {
+  //   return res.status(404).json({
+  //     status: "fail",
+  //     message: "User does not exist"
+  //   });
+  // }
 
   const totp = new OTPAuth.TOTP({
     issuer: "codeninjainsights.com",
@@ -247,7 +287,9 @@ export const Verify2fa = async (req, res) => {
   }
 
   if (!user.enable2fa) {
-    await User.updateOne({ _id: userId }, { enable2fa: true });
+    // 4. Update password in DB
+    await db.execute('UPDATE users SET enable2fa = ? WHERE id = ?', [hashedPassword, userIdF]);
+
   }
 
   res.json({
@@ -530,6 +572,18 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const forgetPassword = asyncHandler(async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Check if user exists
+    const [userRows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+    if (userRows.length === 0) {
+      return res.status(404).json({ status: false, message: "User not found" });
+    }
+
+  } catch (error) {
+
+  }
   const { email } = req.body;
   const user = await User.findOne({ email });
   if (!user) {
