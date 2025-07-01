@@ -191,32 +191,19 @@ export const Enable2FA = async (req, res) => {
       return res.status(404).json({ status: false, message: "User not found" });
     }
     const user = userRows[0];
-    // const user = await User.findOne({ _id: userId });
 
-    // if (!user) {
-    //   return res.status(404).json({
-    //     status: "fail",
-    //     message: "User does not exist"
-    //   });
-    // }
 
     // Step 1: Generate Base32 secret manually using crypto
     const randomBuffer = crypto.randomBytes(20); // 20 bytes = 160 bits
     const base32_secret = new OTPAuth.Secret({ buffer: randomBuffer }).base32;
 
-    // Step 2: Save secret to DB
-    // await User.updateOne({ _id: userId }, { secrets2fa: base32_secret });
-
-    // 4. Update password in DB
-    await db.execute('UPDATE users SET secrets2fa = ? WHERE id = ?', [secrets2fa, userId]);
+    await db.execute('UPDATE users SET secrets2fa = ? WHERE id = ?', [base32_secret, userId]);
 
     // Step 3: Create OTPAuth URL
     const issuer = "hrms.kusheldigi.com";
     const label = user.email;
 
     const otpauth_url = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(label)}?secret=${base32_secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
-
-    console.log("Generated OTPAuth URL:", otpauth_url);
 
     // Step 4: Generate QR
     QRCode.toDataURL(otpauth_url, (err, qrUrl) => {
@@ -253,51 +240,64 @@ const generateBase32Secret = () => {
 };
 
 export const Verify2fa = async (req, res) => {
-  const { userId, token } = req.body;
+  try {
+    const { userId, token } = req.body;
 
-  const [userRows] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
-  if (userRows.length === 0) {
-    return res.status(404).json({ status: false, message: "User not found" });
-  }
-  const user = userRows[0];
-  // const user = await User.findOne({ _id: userId });
+    // Step 1: Find user
+    const [userRows] = await db.execute("SELECT * FROM users WHERE id = ?", [userId]);
+    if (userRows.length === 0) {
+      return res.status(404).json({ status: false, message: "User not found" });
+    }
 
-  // if (!user) {
-  //   return res.status(404).json({
-  //     status: "fail",
-  //     message: "User does not exist"
-  //   });
-  // }
+    const user = userRows[0];
 
-  const totp = new OTPAuth.TOTP({
-    issuer: "codeninjainsights.com",
-    label: "codeninjainsights",
-    algorithm: "SHA1",
-    digits: 6,
-    secret: user.secrets2fa
-  });
+    if (!user.secrets2fa) {
+      return res.status(400).json({ status: false, message: "2FA secret not set for this user" });
+    }
 
-  const delta = totp.validate({ token });
+    // Step 2: Create TOTP instance
+    const totp = new OTPAuth.TOTP({
+      issuer: "codeninjainsights.com",
+      label: "codeninjainsights",
+      algorithm: "SHA1",
+      digits: 6,
+      period: 30,
+      secret: OTPAuth.Secret.fromBase32(user.secrets2fa)
+    });
+    console.log(totp)
 
-  if (delta === null) {
-    return res.status(401).json({
-      status: "fail",
-      message: "Authentication failed"
+    // Step 3: Validate token
+    const delta = totp.validate({ token });
+
+    if (delta === null) {
+      return res.status(401).json({
+        status: false,
+        message: "Invalid or expired OTP token"
+      });
+    }
+
+    // Step 4: Enable 2FA if not already enabled
+    if (!user.enable2fa) {
+      await db.execute("UPDATE users SET enable2fa = ? WHERE id = ?", [true, userId]);
+    }
+
+    // Step 5: Send success response
+    return res.status(200).json({
+      status: true,
+      message: "2FA verified successfully",
+      data: {
+        otp_valid: true,
+        enable2fa: true
+      }
+    });
+
+  } catch (error) {
+    console.error("2FA verify error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal server error"
     });
   }
-
-  if (!user.enable2fa) {
-    // 4. Update password in DB
-    await db.execute('UPDATE users SET enable2fa = ? WHERE id = ?', [hashedPassword, userIdF]);
-
-  }
-
-  res.json({
-    status: "success",
-    data: {
-      otp_valid: true
-    }
-  });
 };
 
 

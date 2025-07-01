@@ -1,6 +1,7 @@
 import Lead from "../models/Lead/Lead.js";
 import LeadTimeline from "../models/LeadTimeline.js";
 import db from "../db/sql_conn.js"
+import Deal from "../models/Deal.js"
 
 // Lead Section
 
@@ -327,54 +328,150 @@ export const getLeadTimeline = async (req, res) => {
 // Convert To Deals
 
 export const convertLeadToDeal = async (req, res) => {
-  try {
-    const { 
-      dealName, amount, closingDate, stage, campaignSource, contactRole 
-    } = req.body;
+    try {
+        const {
+            dealName, amount, closingDate, stage, campaignSource, contactRole, userId, organizationId
+        } = req.body;
 
-    const { id: userId, organizationId } = req.user;
-    const { leadId } = req.params;
+        // const { id: userId, organizationId } = req.user;
+        const { leadId } = req.params;
 
-    // 1. Validate Lead
-    const lead = await Lead.findById(leadId);
-    if (!lead) {
-      return res.status(404).json({ status: false, message: "Lead not found" });
+        // 1. Validate Lead
+        const lead = await Lead.findById(leadId);
+        if (!lead) {
+            return res.status(404).json({ status: false, message: "Lead not found" });
+        }
+
+        // 2. Create Deal
+        const newDeal = await Deal.create({
+            dealName,
+            amount,
+            closingDate,
+            stage,
+            campaignSource,
+            contactRole,
+            leadId,
+            organizationId,
+            createdBy: userId
+        });
+
+        // 3. Update Lead (optional fields)
+        lead.status = "Converted";
+        lead.closeDate = closingDate;
+        lead.save();
+
+        // 4. Push to Lead Timeline (optional)
+        const timeline = await LeadTimeline.create({
+            leadId: leadId,
+            action: "Converted To Deal",
+            createdBy: req.user?.fullName || "System"
+        });
+        console.log(timeline._id)
+
+        return res.status(201).json({
+            status: true,
+            message: "Lead converted to deal successfully",
+            data: newDeal
+        });
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ status: false, message: "Server Error", error: err.message });
     }
-
-    // 2. Create Deal
-    const newDeal = await Deal.create({
-      dealName,
-      amount,
-      closingDate,
-      stage,
-      campaignSource,
-      contactRole,
-      leadId,
-      organizationId,
-      createdBy: userId
-    });
-
-    // 3. Update Lead (optional fields)
-    lead.status = "Converted";
-    lead.closeDate = closingDate;
-    lead.save();
-
-    // 4. Push to Lead Timeline (optional)
-    lead.timeline.push({
-      message: "Lead Converted to Deal",
-      by: userId,
-      at: new Date()
-    });
-    await lead.save();
-
-    return res.status(201).json({
-      status: true,
-      message: "Lead converted to deal successfully",
-      data: newDeal
-    });
-
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ status: false, message: "Server Error", error: err.message });
-  }
 };
+
+export const GetAllDeals = async (req, res) => {
+    try {
+        const { organizationId } = req.user;
+        if (!organizationId) {
+            return res.status(400).json({
+                success: false,
+                message: "Organization Id is required"
+            })
+        }
+        // Step 1: Fetch Deals with populated lead
+        const deals = await Deal.find({ organizationId }).populate("leadId");
+
+        // Step 2: Enrich each deal with LeadOwner and LeadCreator from MySQL
+        const enrichedDeals = await Promise.all(
+            deals.map(async (dealDoc) => {
+                const deal = dealDoc.toObject(); // Convert Mongoose document to plain object
+
+                const dealOwnerId = deal?.userId; // Make sure this field exists in your schema
+                const leadCreatorId = deal.leadId?.LeadCreator;
+
+                let ownerInfo = null;
+                let creatorInfo = null;
+
+                if (dealOwnerId) {
+                    const [rows] = await db.execute("SELECT id, fullName, email FROM users WHERE id = ?", [dealOwnerId]);
+                    ownerInfo = rows[0] || null;
+                }
+
+                if (leadCreatorId) {
+                    const [rows] = await db.execute("SELECT id, fullName, email FROM users WHERE id = ?", [leadCreatorId]);
+                    creatorInfo = rows[0] || null;
+                }
+
+                return {
+                    ...deal,
+                    LeadOwner: ownerInfo || dealOwnerId,
+                    DealCreator: creatorInfo || leadCreatorId
+                };
+            })
+        );
+
+        return res.status(200).json({ success: true, deals: enrichedDeals });
+
+    } catch (error) {
+        console.error("Error in GetAllDeals:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+};
+
+export const getDeal = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deal = await Deal.findById(id).populate("leadId");
+        if (!deal) {
+            return res.status(404).json({
+                success: false,
+                message: "Lead not found",
+            });
+        }
+
+        // Get IDs
+        const dealOwnerId = deal?.userId;
+        const leadCreatorId = deal.leadId?.LeadCreator;
+
+        // Fetch users from MySQL
+        const [ownerRows] = dealOwnerId
+            ? await db.execute("SELECT id, fullName, email FROM users WHERE id = ?", [dealOwnerId])
+            : [[]];
+        const [creatorRows] = leadCreatorId
+            ? await db.execute("SELECT id, fullName, email FROM users WHERE id = ?", [leadCreatorId])
+            : [[]];
+
+        const leadPlain = deal.toObject();
+        leadPlain.LeadOwner = ownerRows[0] || dealOwnerId;
+        leadPlain.LeadCreator = creatorRows[0] || leadCreatorId;
+
+        return res.status(200).json({
+            success: true,
+            message: "Lead fetched successfully",
+            data: leadPlain,
+        });
+
+    } catch (error) {
+        console.error("Error in GetAllDeals:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+}

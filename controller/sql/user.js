@@ -1374,6 +1374,67 @@ export const userLogin = async (req, res) => {
 
 export const fetchUserDetail = async (req, res) => {
     try {
+        const { email } = req.user;
+        const [users] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+        if (users.length === 0) {
+
+            const client = await Clients.findOne({ Email: email });
+            if (!client) {
+                return res.status(404).json({
+                    status: false,
+                    message: "User not found",
+                });
+            }
+            const token = await generateClientRefreshToken(client._id);
+            return res.status(200).json({
+                status: true,
+                message: "Login successful",
+                user: client,
+                token,
+            });
+
+        }
+        const user = users[0];
+
+        // Fetch permissionRole if exists
+        let permissionRole = null;
+        if (user.permissionRoleId) {
+            const [roles] = await db.execute('SELECT * FROM permission_roles WHERE id = ?', [user.permissionRoleId]);
+            if (roles.length > 0) {
+                const { organizationId, createdAt, updatedAt, ...rest } = roles[0];
+                permissionRole = rest;
+            }
+        }
+        // let document = []
+        const [documents] = await db.execute(
+            `SELECT * FROM documents WHERE userId = ?`,
+            [user.id]
+        );
+        user.permissionRole = permissionRole;
+        user.document = documents
+
+        if (user.isDeactivated === "Yes") {
+            return res.status(403).json({
+                status: false,
+                message: "User account is deactivated",
+            });
+        }
+
+        const payload = {
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+            organizationId: user.organizationId,
+        };
+
+        const token = jwt.sign(payload, process.env.SK, { expiresIn: '500d' });
+
+        return res.status(200).json({
+            status: true,
+            message: "Login successful",
+            token,
+            user,
+        });
 
     } catch (error) {
 

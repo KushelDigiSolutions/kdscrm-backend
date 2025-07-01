@@ -1205,7 +1205,7 @@ export const getAnnouncement = asyncHandler(async (req, res) => {
   if (!organizationId) {
     return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
   }
-  const data = await Announcement.find({ organizationId });
+  const data = await Announcement.find({ organizationId }).sort({ startDate: 1, endDate: 1 });
   return res
     .status(200)
     .json(new ApiResponse(200, data, " Successfully fetched all the Announcement"));

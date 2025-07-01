@@ -16,6 +16,7 @@ const paySlipSchema = new Schema({
         type: String,
         default: "Unpaid"
     },
+    organizationId: String
 });
 
 const Payslip = mongoose.model('Payslip', paySlipSchema);

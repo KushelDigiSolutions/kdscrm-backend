@@ -7,7 +7,7 @@ import {
     createUser, UpdateUser, GetUsers, GetSingleUser,
     getUserByOrganization, deleteUser, userLogin, postAssets,
     getAssets, getAssetsByID, getAssetsByOrganization, updateAsset,
-    deleteAsset, uploadUserDocuments, getUserDocuments, createAdmin
+    deleteAsset, uploadUserDocuments, getUserDocuments, createAdmin, fetchUserDetail
 } from "../controller/sql/user.js";
 import isAuthenticated from "../middleware/auth.js";
 // import { uploadToCloudinary } from "../../utils/cloudinary.js";
@@ -36,6 +36,7 @@ router.post("/createAdmin", createAdmin);
 
 router.post("/login", userLogin);
 router.get("/getUsers", GetUsers);
+router.get("/fetchUserDetail", isAuthenticated, fetchUserDetail)
 router.get("/getuser", GetSingleUser);
 router.get("/allusers", isAuthenticated, getUserByOrganization);
 router.put("/Update/:id", UpdateUser);

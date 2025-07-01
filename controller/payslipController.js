@@ -6,6 +6,13 @@ import db from "../db/sql_conn.js"
 
 export const getPayslip = async (req, res) => {
     try {
+        const { organizationId } = req.user;
+        if (!organizationId) {
+            return res.status(400).json({
+                success: false,
+                message: "Organization Id is required"
+            })
+        }
         const { month, year } = req.body;
         const monthNames = {
             "January": 1,
@@ -57,11 +64,13 @@ export const getPayslip = async (req, res) => {
                 Payslip.findOne({
                     user: user.id,
                     month: month,
-                    year: year
+                    year: year,
+                    organizationId
                 }),
                 Leave.find({
                     user: user.id,
                     status: "Accepted",
+                    organizationId,
                     $or: [
                         { from: { $regex: `^${year}-${String(monthNames[month]).padStart(2, '0')}` } },
                         { to: { $regex: `^${year}-${String(monthNames[month]).padStart(2, '0')}` } }
@@ -103,6 +112,13 @@ export const getPayslip = async (req, res) => {
 
 export const togglePayslip = async (req, res) => {
     try {
+        const { organizationId } = req.user;
+        if (!organizationId) {
+            return res.status(400).json({
+                success: false,
+                message: "Organization Id is required"
+            })
+        }
         const { userId } = req.params;
         const { month, year } = req.body;
 
@@ -119,7 +135,8 @@ export const togglePayslip = async (req, res) => {
         let payslip = await Payslip.findOne({
             user: userId,
             month: month,
-            year: year
+            year: year,
+            organizationId
         });
 
         if (!payslip) {
@@ -128,7 +145,8 @@ export const togglePayslip = async (req, res) => {
                 user: userId,
                 month: month,
                 year: year,
-                status: "Paid"
+                status: "Paid",
+                organizationId
             });
         } else {
             // If payslip exists, toggle its status
@@ -152,10 +170,17 @@ export const togglePayslip = async (req, res) => {
 
 export const bulkPayslip = async (req, res) => {
     try {
+        const { organizationId } = req.user;
+        if (!organizationId) {
+            return res.status(400).json({
+                success: false,
+                message: "Organization Id is required"
+            })
+        }
         const { month, year } = req.body;
 
         // Get all users
-        const users = await User.find();
+        const users = await User.find({ organizationId });
 
         // Iterate over each user and create payslip
         for (const user of users) {
@@ -163,7 +188,7 @@ export const bulkPayslip = async (req, res) => {
             let payslip = await Payslip.findOne({
                 user: user._id,
                 month: month,
-                year: year
+                year: year,
             });
 
             if (!payslip) {
@@ -172,7 +197,8 @@ export const bulkPayslip = async (req, res) => {
                     user: user._id,
                     month: month,
                     year: year,
-                    status: "Paid"
+                    status: "Paid",
+                    organizationId
                 });
             }
             else {
@@ -197,8 +223,15 @@ export const bulkPayslip = async (req, res) => {
 
 export const SetUserTotalLeave = async (req, res) => {
     try {
+        const { organizationId } = req.user;
+        if (!organizationId) {
+            return res.status(400).json({
+                success: false,
+                message: "Organization Id is required"
+            })
+        }
         // Find all users
-        const allUsers = await User.find({});
+        const allUsers = await User.find({ organizationId });
 
 
         // Initialize an object to store total leaves for each user
