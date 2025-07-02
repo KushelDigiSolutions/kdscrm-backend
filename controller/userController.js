@@ -1007,6 +1007,12 @@ export const changeBreakIn = async (req, res) => {
 }
 
 export const getActiveUsersCount = asyncHandler(async (req, res) => {
+
+  const { organizationId } = req?.user;
+  if (!organizationId) {
+    return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
+  }
+  // const 
   // Get the current timestamp in milliseconds
   const currentDateTimestamp = new Date().getTime();
 
@@ -1018,6 +1024,7 @@ export const getActiveUsersCount = asyncHandler(async (req, res) => {
     const activeUsers = await ActivityTracker.find({
       // Query activities within the 12-hour range
       clockIn: { $gte: twelveHoursAgoTimestamp, $lte: currentDateTimestamp },
+      organizationId,
       // Exclude entries where clockOut is not '0' or is not present
       $or: [{ clockOut: '0' }, { clockOut: { $exists: false } }]
     });

@@ -15,7 +15,8 @@ const mySchema = new mongoose.Schema({
     status: {
         type: String,
         default: 'true'
-    }
+    },
+    organizationId: String
 });
 
 const Designation = mongoose.model('Designation', mySchema);

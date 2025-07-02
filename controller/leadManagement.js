@@ -3,6 +3,18 @@ import LeadTimeline from "../models/LeadTimeline.js";
 import db from "../db/sql_conn.js"
 import Deal from "../models/Deal.js"
 
+
+/**
+ * Remove any keys whose value is exactly undefined
+ * @param {object} obj 
+ * @returns {object} new object without undefined values
+ */
+function removeUndefined(obj) {
+    return Object.fromEntries(
+        Object.entries(obj).filter(([_, v]) => v !== undefined)
+    );
+}
+
 // Lead Section
 
 export const createLead = async (req, res) => {
@@ -97,6 +109,108 @@ export const createLead = async (req, res) => {
     }
 };
 
+export const createExternalLead = async (req, res) => {
+    try {
+        const { id } = req.query;
+        const { LeadOwner,
+            LeadCreator,
+            image,
+            Company,
+            FirstName,
+            LastName,
+            Title,
+            Email,
+            Phone,
+            Fax,
+            Mobile,
+            Website,
+            LeadSource,
+            NoOfEmployee,
+            Industry,
+            LeadStatus,
+            AnnualRevenue,
+            Rating,
+            EmailOptOut,
+            SkypeID,
+            SecondaryEmail,
+            Twitter,
+            Street,
+            City,
+            State,
+            ZipCode,
+            Country,
+            LinkedIn,
+            DescriptionInfo,
+            date,
+        } = req.body
+
+        console.log("Payload =>  ", req.body);
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "Please Add Required Field"
+            })
+        }
+        const [organization] = await db.execute('SELECT * FROM organizations WHERE id = ?', [id]);
+        if (organization.length === 0) {
+            return res.status(404).json({ message: 'Organization not found' });
+        }
+        const client = organization[0]
+        const data = removeUndefined({
+            LeadOwner,
+            LeadCreator,
+            image,
+            Company,
+            FirstName,
+            LastName,
+            Title,
+            Email,
+            Phone,
+            Fax,
+            Mobile,
+            Website,
+            LeadSource,
+            NoOfEmployee,
+            Industry,
+            LeadStatus,
+            AnnualRevenue,
+            Rating,
+            EmailOptOut,
+            SkypeID,
+            SecondaryEmail,
+            Twitter,
+            Street,
+            City,
+            State,
+            ZipCode,
+            Country,
+            LinkedIn,
+            DescriptionInfo,
+            date,
+        })
+        data.organizationId = client.id;
+        console.log("data => ", data);
+
+        const leadDetail = await Lead.create(data);
+        const timeline = await LeadTimeline.create({
+            leadId: leadDetail._id,
+            action: "Lead Created",
+            createdBy: "System"
+        });
+        console.log(timeline._id)
+        return res.status(201).json({
+            status: true,
+            message: "Successfully created",
+            data: leadDetail,
+        });
+    } catch (error) {
+        console.log("error ", error);
+        return res.status(500).json({
+            status: false,
+            message: "Internal server error",
+        });
+    }
+}
 export const editLead = async (req, res) => {
     try {
         const {

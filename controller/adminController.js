@@ -2693,7 +2693,8 @@ export const getHoliday = asyncHandler(async (req, res) => {
       return res.status(401).json({ status: false, message: "Unauthorized or missing organizationId" });
     }
     // Find notifications where the user ID is in the user array
-    const holidays = await Holiday.find({ organizationId });
+    const holidays = await Holiday.find({ organizationId }).sort({ startDate: 1, endDate: 1 });
+
 
     return res.status(200).json({
       status: 200,
@@ -2975,10 +2976,16 @@ export const closeLead = async (req, res) => {
   try {
     const currentDate = new Date().toISOString();
 
-    const lead = await Lead.findByIdAndUpdate(id, {
-      status: 'Close',
-      closeDate: currentDate,
-    }, { new: true });
+    // const lead = await Lead.findByIdAndUpdate(id, {
+    //   status: 'Close',
+    //   closeDate: currentDate,
+    // }, { new: true });
+
+    const lead = Lead.findById(id);
+    lead.status = 'Close'
+    lead.closeDate = currentDate;
+    await lead.save()
+
 
     if (!lead) {
       return res.status(404).json({ status: false, message: 'Lead not found' });
