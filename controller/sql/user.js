@@ -700,7 +700,7 @@ export const createUser = async (req, res) => {
 
     } catch (error) {
         console.error("Error creating user:", error);
-        return res.status(500).json({ status: false, message: "Internal Server Error" });
+        return res.status(500).json({ status: false, message: "Internal Server Error", error });
     }
 };
 
@@ -899,7 +899,7 @@ export const createAdmin = async (req, res) => {
             Regards,<br/>Kushel Digi Solutions
         </div>`;
 
-        // await SendEmail(email, "Your Admin Account is Ready", html, html); // Uncomment if email sending configured
+        await SendEmail(email, "Your Admin Account is Ready", html, html); // Uncomment if email sending configured
 
         return res.status(201).json({
             status: true,
