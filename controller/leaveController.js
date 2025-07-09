@@ -642,7 +642,7 @@ export const acceptLeaveHandler = async ({ id, userId, startDate, endDate }) => 
     const userDetail = userRows[0];
     if (!userDetail) return { status: false, message: "User not found" };
 
-    const adjustedDays = parseInt(leaveDetails.days, 10) + 1;
+    const adjustedDays = parseInt(leaveDetails.days, 10)
     const emailSubject = `Total holiday of ${adjustedDays} days`;
     const emailBody = `<div><div>Total holiday of ${adjustedDays} days Accepted</div></div>`;
 
@@ -686,7 +686,7 @@ export const acceptHalfDayHandler = async ({ fullName, days, id, userId, startDa
   const subject = `total Half Day of ${days} days`;
 
   await mailSender(userDetail?.email, "Accept Half Day ", `<div>
-   <div>total Half Days of ${parseInt(days) + 1} days Accepted</div>
+   <div>total Half Days of ${parseInt(days) } days Accepted</div>
 
   </div>`)
 
