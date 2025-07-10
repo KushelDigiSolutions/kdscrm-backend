@@ -765,28 +765,50 @@ export const getUpcomingBirthdays = async (req, res) => {
     const currentDate = today.getDate();
 
     // Get all users
-    const [employees] = await db.execute('SELECT * FROM users WHERE organizationId = ? ORDER BY updatedAt DESC', [organizationId]);
+    const [employees] = await db.execute(
+      'SELECT * FROM users WHERE organizationId = ? ORDER BY updatedAt DESC',
+      [organizationId]
+    );
 
     const filteredEmployees = employees.filter(employee => {
       if (!employee.dob || employee.isDeactivated !== "No") return false;
 
-      const dob = new Date(employee.dob);
-      const birthMonth = dob.getMonth(); // 0-11
+      let dob;
+
+      // Try to parse manually
+      if (typeof employee.dob === 'string') {
+        if (employee.dob.includes('/')) {
+          // Format: DD/MM/YYYY
+          const [day, month, year] = employee.dob.split('/');
+          dob = new Date(`${year}-${month}-${day}`); // Convert to ISO format
+          // 2000-12-07
+          // console.log(dob)
+        } else {
+          dob = new Date(employee.dob); // ISO or full timestamp
+          // console.log(dob)
+        }
+      } else {
+        dob = new Date(employee.dob); // Already a Date object
+        // console.log(dob)
+      }
+
+      if (isNaN(dob)) return false; // Invalid date
+
+      const birthMonth = dob.getMonth(); // 0-indexed
       const birthDate = dob.getDate();
 
-      // Month difference logic (wrap around December)
       let monthDiff = birthMonth - currentMonth;
       if (monthDiff < 0) monthDiff += 12;
 
       return (
-        monthDiff <= 2 && // 3 months include current + next 2
-        (monthDiff > 0 || birthDate >= currentDate) // Ensure for current month, birthday is today or after
+        monthDiff <= 2 &&
+        (monthDiff > 0 || birthDate >= currentDate)
       );
     });
-
+    console.log(filteredEmployees)
     res.status(200).json(filteredEmployees);
   } catch (error) {
-    console.log(error)
+    console.log(error);
     res.status(500).json({ message: error.message });
   }
 };

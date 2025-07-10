@@ -1386,8 +1386,12 @@ export const CreateLeadNote = async (req, res) => {
   const { LeadId } = req.params;
 
   const { Note, Status } = req.body;
+  const lead = await Lead.findById(LeadId);
+  lead.LeadStatus = Status;
+  await lead.save();
 
   const noteDetail = await LeadNote.create({ Note, Status, LeadId });
+
   const timeline = await LeadTimeline.create({
     leadId: LeadId,
     action: `Lead Status updated to ${Status}`,

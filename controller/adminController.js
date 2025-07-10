@@ -2749,14 +2749,27 @@ export const updateHoliday = asyncHandler(async (req, res) => {
     }
 
     // Find active users and extract only email field
-    const users = await User.find({ isDeactivated: "No" }).select("email");
+    // const users = await User.find({ isDeactivated: "No" }).select("email");
+    const [users] = await db.execute(
+      'SELECT email FROM users WHERE isDeactivated = ? AND organizationId = ? ORDER BY updatedAt DESC',
+      ['No', organizationId]
+    );
+    console.log(users)
 
-    if (users.length) {
-      const emailList = users.map(user => user.email);
 
-      const emailSubject = "Regarding Holiday Update";
+    if (!users.length) {
+      return res.status(404).json({
+        status: false,
+        message: "No active users found to notify",
+      });
+    }
 
-      const emailBody = `
+    const emailList = users.map(user => user.email);
+
+
+    const emailSubject = "Regarding Holiday Update";
+
+    const emailBody = `
   <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; background-color: #f3f4f6; color: #111827;">
     <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
       <h2 style="text-align: center; color: #3b82f6; margin-bottom: 20px;">📢 Holiday Announcement</h2>
@@ -2787,14 +2800,14 @@ export const updateHoliday = asyncHandler(async (req, res) => {
 
 
 
-      // Send all emails in parallel
-      await Promise.all(
-        emailList.map(email =>
-          mailSender(email, emailSubject, emailBody)
-            .catch(err => console.error(`Failed to send email to ${email}:`, err))
-        )
-      );
-    }
+    // Send all emails in parallel
+    await Promise.all(
+      emailList.map(email =>
+        mailSender(email, emailSubject, emailBody)
+          .catch(err => console.error(`Failed to send email to ${email}:`, err))
+      )
+    );
+
 
     return res.status(200).json(
       new ApiResponse(200, updatedHoliday, "Holiday updated successfully")
@@ -2976,15 +2989,15 @@ export const closeLead = async (req, res) => {
   try {
     const currentDate = new Date().toISOString();
 
-    // const lead = await Lead.findByIdAndUpdate(id, {
-    //   status: 'Close',
-    //   closeDate: currentDate,
-    // }, { new: true });
+    const lead = await Lead.findByIdAndUpdate(id, {
+      status: 'Close',
+      closeDate: currentDate,
+    }, { new: true });
 
-    const lead = Lead.findById(id);
-    lead.status = 'Close'
-    lead.closeDate = currentDate;
-    await lead.save()
+    // const lead = Lead.findById(id);
+    // lead.status = 'Close'
+    // lead.closeDate = currentDate;
+    // await lead.save()
 
 
     if (!lead) {
@@ -2996,6 +3009,7 @@ export const closeLead = async (req, res) => {
       lead
     });
   } catch (error) {
+    console.log(error)
     return res.status(500).json({ message: 'Server error', error });
   }
 };

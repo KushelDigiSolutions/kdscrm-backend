@@ -389,7 +389,7 @@ export const getUserLeaves = async ({ auth }) => {
   leaves.forEach(async (e) => {
     let i = 0
     if (e.status === "pending") {
-      console.log(e.status, i)
+      // console.log(e.status, i)
       i++
       e.status = "pending"
       await e.save();
@@ -516,7 +516,7 @@ export const deleteAllLeaves = async () => {
 export const getTotalLeaveCount = async (req, res) => {
   try {
     const { organizationId, id } = req.user;
-    console.log(organizationId, id)
+    // console.log(organizationId, id)
 
     if (!organizationId) {
       return res.status(400).json({
@@ -527,11 +527,11 @@ export const getTotalLeaveCount = async (req, res) => {
 
     const leaves = await Leave.find({ organizationId, user:id });
     const filterLeave = leaves.filter(leave => leave.status === "pending");
-    console.log(leaves)
+    // console.log(leaves)
 
     const halfDays = await HalfDay.find({ organizationId });
     const filterHalfDay = halfDays.filter(half => half.status === "pending");
-    console.log(halfDays)
+    // console.log(halfDays)
 
     return res.status(200).json({
       success: true,
