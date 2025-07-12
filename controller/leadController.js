@@ -1394,7 +1394,7 @@ export const CreateLeadNote = async (req, res) => {
 
   const timeline = await LeadTimeline.create({
     leadId: LeadId,
-    action: `Lead Status updated to ${Status}`,
+    action: `Lead Status updated to ${Status} with Note ${Note}`,
     createdBy: req.user?.fullName || "System"
   });
   console.log(timeline._id)
