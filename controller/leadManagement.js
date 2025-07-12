@@ -250,6 +250,40 @@ export const editLead = async (req, res) => {
 
         // Ensure id is passed as a parameter
         const id = req.params.id;
+        const data = removeUndefined({
+            LeadOwner,
+            LeadCreator,
+            image,
+            Company,
+            FirstName,
+            LastName,
+            Title,
+            Email,
+            Phone,
+            Fax,
+            Mobile,
+            Website,
+            LeadSource,
+            NoOfEmployee,
+            Industry,
+            LeadStatus,
+            AnnualRevenue,
+            Rating,
+            EmailOptOut,
+            SkypeID,
+            SecondaryEmail,
+            Twitter,
+            Street,
+            City,
+            State,
+            ZipCode,
+            Country,
+            LinkedIn,
+            DescriptionInfo,
+            date,
+            status,
+            dynamicFields
+        })
 
         // Update lead details
         const leadDetail = await Lead.findByIdAndUpdate(
@@ -290,10 +324,13 @@ export const editLead = async (req, res) => {
             },
             { new: true }
         );
+        const updatedFields = Object.keys(data); // like ["FirstName", "Email", "Phone"]
+
+        const actionMessage = `${updatedFields.join(", ")} field${updatedFields.length > 1 ? "s" : ""} updated`;
 
         const timeline = await LeadTimeline.create({
             leadId: id,
-            action: "Lead Edited",
+            action: actionMessage,
             createdBy: req.user?.fullName || "System"
         });
         console.log(timeline._id)

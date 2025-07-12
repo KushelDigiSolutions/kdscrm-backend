@@ -31,6 +31,7 @@ const mySchema = new mongoose.Schema({
   image: String,
   date: String,
   LinkedIn: String,
+  CompanyLinkedIn: String,
   generated: {
     type: String,
     default: false

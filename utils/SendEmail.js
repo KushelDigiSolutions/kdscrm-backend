@@ -5,7 +5,7 @@ export const SendEmail = async (to, subject, text, html) => {
   const transporter = createTransport({
     host: "smtpout.secureserver.net",
     port: 465,
-    secure: true, 
+    secure: true,
     auth: {
       user: "info@kusheldigi.com",
       pass: "Infokushel@12345"
@@ -24,7 +24,7 @@ export const SendEmail = async (to, subject, text, html) => {
   });
 };
 
- // auth: {
-    //   user: "webmaster.kushel@gmail.com",
-    //    pass:"fypnipkjntklyznj"
-    // },
+// auth: {
+//   user: "webmaster.kushel@gmail.com",
+//    pass:"fypnipkjntklyznj"
+// },
