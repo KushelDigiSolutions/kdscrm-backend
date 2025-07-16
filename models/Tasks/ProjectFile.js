@@ -11,6 +11,10 @@ const projectFileSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    visibleToCustomer: {
+      type: Boolean,
+      default: false
+    },
     filePath: {
       type: String,
       required: true,

@@ -1356,12 +1356,15 @@ export const userLogin = async (req, res) => {
         };
 
         const token = jwt.sign(payload, process.env.SK, { expiresIn: '500d' });
+        const [myOrg] = await db.execute('SELECT name, imageUrl, imageUrl2, id, email FROM organizations WHERE id = ?', [user.organizationId]);
+        const organization = myOrg[0];
 
         return res.status(200).json({
             status: true,
             message: "Login successful",
             token,
             user,
+            organization
         });
     } catch (error) {
         console.error("Login error:", error);
