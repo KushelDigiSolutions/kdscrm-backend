@@ -7,7 +7,7 @@ import EmployeeLeave from "../models/EmployeeLeave/employeeLeave.js"
 import db from "../db/sql_conn.js";
 
 // Fro create Leave
-export const postLeave = async ({ auth, type, from, to, days, reason }) => {
+export const postLeave = async ({ auth, type, from, to, days, reason, organizationId }) => {
   try {
 
     const newLeave = new Leave({
@@ -24,15 +24,15 @@ export const postLeave = async ({ auth, type, from, to, days, reason }) => {
 
     const saveLeaveResult = await newLeave.save();
 
-    // Send email asynchronously (doesn't block the response)
-    mailSender("hr@kusheldigi.com", "Regarding Leave", `
-      <div>
-        <div><strong>From:</strong> ${auth.fullName}</div>
-        <div><strong>To:</strong> ${to}</div>
-        <div><strong>Days:</strong> ${days + 1}</div>
-        <div><strong>Reason:</strong> ${reason}</div>
-      </div>
-    `).catch(err => console.error("Email sending failed:", err));
+    // // Send email asynchronously (doesn't block the response)
+    // mailSender(organizationId,"hr@kusheldigi.com", "Regarding Leave", `
+    //   <div>
+    //     <div><strong>From:</strong> ${auth.fullName}</div>
+    //     <div><strong>To:</strong> ${to}</div>
+    //     <div><strong>Days:</strong> ${days + 1}</div>
+    //     <div><strong>Reason:</strong> ${reason}</div>
+    //   </div>
+    // `).catch(err => console.error("Email sending failed:", err));
 
     return { success: true, message: "New leave created", leaveId: saveLeaveResult._id };
   } catch (error) {
@@ -87,15 +87,15 @@ export const postHalfDay = async ({ auth, from, to, days, reason }) => {
 
     const saveLeaveResult = await newLeave.save();
 
-    // Send email asynchronously (non-blocking)
-    mailSender("hr@kusheldigi.com", "Regarding Half Day", `
-      <div>
-        <div><strong>From:</strong> ${auth.fullName}</div>
-        <div><strong>To:</strong> ${to}</div>
-        <div><strong>Days:</strong> ${days + 1}</div>
-        <div><strong>Reason:</strong> ${reason}</div>
-      </div>
-    `).catch(err => console.error("Half-day email sending failed:", err));
+    // // Send email asynchronously (non-blocking)
+    // mailSender("hr@kusheldigi.com", "Regarding Half Day", `
+    //   <div>
+    //     <div><strong>From:</strong> ${auth.fullName}</div>
+    //     <div><strong>To:</strong> ${to}</div>
+    //     <div><strong>Days:</strong> ${days + 1}</div>
+    //     <div><strong>Reason:</strong> ${reason}</div>
+    //   </div>
+    // `).catch(err => console.error("Half-day email sending failed:", err));
 
     return {
       success: true,
@@ -353,7 +353,7 @@ export const updateLeave = async ({ auth, employeeName, id, leaveType, from, to,
     }
 
     // Send email asynchronously
-    mailSender(employee.email, "Leave Updated", `
+    mailSender(organizationId,employee.email, "Leave Updated", `
       <div>
         <div><strong>Updated by:</strong> ${auth?.fullName}</div>
         <div><strong>Leave Type:</strong> ${leaveType}</div>
@@ -565,7 +565,7 @@ export const rejectLeaveHandler = async ({ fullName, id }) => {
     if (!userDetail) return { status: false, message: "User not found" };
 
     try {
-      await mailSender(userDetail.email, "Regarding Half Day Cancel", `
+      await mailSender(organizationId,userDetail.email, "Regarding Half Day Cancel", `
         <div>
           <div>Your Half Days are cancelled by admin</div>
         </div>
@@ -605,7 +605,7 @@ export const rejectHalfDayHandler = async ({ fullName, id }) => {
     if (!userDetail) return { status: false, message: "User not found" };
 
     try {
-      await mailSender(userDetail.email, "Regarding Half Day Cancel", `
+      await mailSender(organizationId,userDetail.email, "Regarding Half Day Cancel", `
         <div>
           <div>Your Half Days are cancelled by admin</div>
         </div>
@@ -647,7 +647,7 @@ export const acceptLeaveHandler = async ({ id, userId, startDate, endDate }) => 
     const emailBody = `<div><div>Total holiday of ${adjustedDays} days Accepted</div></div>`;
 
     // Fire and forget the email
-    mailSender(userDetail.email, emailSubject, emailBody)
+    mailSender(organizationId,userDetail.email, emailSubject, emailBody)
       .catch(err => console.error("Email failed:", err));
 
     await Promise.all([
@@ -670,7 +670,7 @@ export const acceptLeaveHandler = async ({ id, userId, startDate, endDate }) => 
 };
 
 // For accept half day
-export const acceptHalfDayHandler = async ({ fullName, days, id, userId, startDate, endDate }) => {
+export const acceptHalfDayHandler = async ({ fullName, days, id, userId, startDate, endDate,organizationId }) => {
 
   const leaveDetails = await HalfDay.findById(id);
 
@@ -685,7 +685,7 @@ export const acceptHalfDayHandler = async ({ fullName, days, id, userId, startDa
 
   const subject = `total Half Day of ${days} days`;
 
-  await mailSender(userDetail?.email, "Accept Half Day ", `<div>
+  await mailSender(organizationId,userDetail?.email, "Accept Half Day ", `<div>
    <div>total Half Days of ${parseInt(days) } days Accepted</div>
 
   </div>`)

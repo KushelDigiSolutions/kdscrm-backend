@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
 
 const dealSchema = new mongoose.Schema({
+    accountName:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Account'
+    },
     dealName: String,
     amount: Number,
     closingDate: Date,

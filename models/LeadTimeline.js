@@ -1,3 +1,4 @@
+// models/LeadTimeline.js
 import mongoose from "mongoose";
 
 const leadTimelineSchema = new mongoose.Schema({
@@ -9,6 +10,10 @@ const leadTimelineSchema = new mongoose.Schema({
     action: {
         type: String,
         required: true
+    },
+    notes: {
+        type: [String],
+        default: []
     },
     createdBy: {
         type: String,

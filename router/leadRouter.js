@@ -13,7 +13,7 @@ router.post("/createLead", createLead);
 router.post("/partTimeOfferApi", partTimeOfferApi);
 router.get("/getLeadById/:id", GetLeadById);
 router.get("/getOpenLeads/:id", GetOpenLeads);
-router.post("/createExpense",isAuthenticated, CreateExpense);
+router.post("/createExpense", isAuthenticated, CreateExpense);
 router.get("/getLeadByUser/:id", GetLeadByUser);
 router.get("/getDesiUser", GetDesiUser);
 router.get("/getDesiUser1", GetDesiUser1);
@@ -42,11 +42,11 @@ router.delete("/deleteLead/:id", deleteLeads);
 router.post("/editLead/:id", editLead);
 
 
-router.post("/createLeadStatus", CreateLeadStatus);
-router.post("/createLeadSource", CreateLeadSource);
+router.post("/createLeadStatus", isAuthenticated, CreateLeadStatus);
+router.post("/createLeadSource", isAuthenticated, CreateLeadSource);
 
-router.get("/allLeadStatus", getLeadStatus);
-router.get("/allLeadSource", getLeadSource);
+router.get("/allLeadStatus", isAuthenticated, getLeadStatus);
+router.get("/allLeadSource", isAuthenticated, getLeadSource);
 
 router.post("updateLeadStatus", UpdateLeadStatus);
 router.post("updateLeadSource", UpdateLeadSource);
@@ -60,7 +60,7 @@ router.delete("/deleteLeadNote/:leadId", DeleteLeadNote);
 router.get("/getNoteById/:leadId", GetNoteById);
 router.get("/getQuotationApi/:leadId", GetQuotationApi);
 router.delete("/deleteQuotationapi/:id", DeleteQuotationapi);
-router.post("/postQuotationForm",isAuthenticated, PostQuotationForm);
+router.post("/postQuotationForm", isAuthenticated, PostQuotationForm);
 router.delete("/deletePropapi/:id", deletePropapi);
 router.post("/postProposalForm", PostProposalForm);
 
@@ -97,7 +97,7 @@ router.post("/getExpense", isAuthenticated, getExpense);
 
 
 router.post("/instaAddLead", InstaAddLead);
-router.post("/sharelead", ShareLead);
+router.post("/sharelead", isAuthenticated, ShareLead);
 
 
 router.post('/postLeadCategory', postLeadCategory);

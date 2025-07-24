@@ -109,10 +109,11 @@ export const CreateClient = async (req, res) => {
     `;
 
     await SendEmail(
+      organizationId,
       Email,
       "Welcome to Kushel Digi Solutions – Your Account Details",
       emailTemplate,
-      emailTemplate
+      emailTemplate,
     );
 
     return res.status(201).json({
@@ -485,7 +486,7 @@ export const CreateProjectTask = async (req, res) => {
 
     const memberdetail = await User.findById(Members);
 
-    await mailSender(memberdetail.email, `Regarding New Task`, `<div>
+    await mailSender(organizationId, memberdetail.email, `Regarding New Task`, `<div>
       <div>Project: ${projectDetail?.Name}</div>
       <div>Subject: ${Title}</div>
       <div>Priority: ${Priority}</div>
@@ -573,7 +574,7 @@ export const EditProjectTask = async (req, res) => {
 
   const memberdetail = await User.findById(Members);
 
-  await mailSender(memberdetail.email, `Regarding New Task`, `<div>
+  await mailSender(organizationId, memberdetail.email, `Regarding New Task`, `<div>
       <div>Project: ${projectDetail?.Name}</div>
       <div>Subject: ${Title}</div>
       <div>Priority: ${Priority}</div>

@@ -130,7 +130,7 @@ router.get("/fetchEmployee", fetchAllEmployee);
 router.post('/postapp', postApprisal);
 router.get('/getApp', isAuthenticated, getApprisal);
 router.delete("/deleteApp/:id", deleteApprisal);
-router.put("/updateApp/:id", updateApprisal);
+router.put("/updateApp/:id",isAuthenticated, updateApprisal);
 
 router.post('/postAsset', postAssets);
 router.post('/acceptassetsapi', Acceptassetsapi);
@@ -191,7 +191,7 @@ router.put("/updateTransfer/:id", updateTransfer);
 router.post('/createHoliday', isAuthenticated, createHoliday);
 router.get('/getHoliday', isAuthenticated, getHoliday);
 router.delete("/deleteHoliday/:id", deleteHoliday);
-router.put("/updateHoliday/:id", updateHoliday);
+router.put("/updateHoliday/:id",isAuthenticated, updateHoliday);
 
 router.post('/createTrip', createTrip);
 router.get('/getTrip', getTrip);

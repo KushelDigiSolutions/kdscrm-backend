@@ -534,7 +534,7 @@ export const ShareLead = async (req, res) => {
 
     for (let i = 0; i < shareList.length; i++) {
       let userdetail = await User.findById(shareList[i]);
-      await mailSender(userdetail.email, `Regarding Lead Share`, `<div>
+      await mailSender(organizationId,userdetail.email, `Regarding Lead Share`, `<div>
         <div>A Lead has been shared with you</div>
       </div>`);
     }
@@ -898,10 +898,25 @@ export const GetLeadByUser = async (req, res) => {
   });
 };
 
+const LeadStatuss = [
+  "Data/Telecom OEM",
+  "Government/Military",
+  "Large Enterprise",
+  "ManagementISV",
+  "Network Equipment Enterprise",
+  "Non-management ISV",
+  "Optical Networking",
+  "Service Provider",
+  "Small/Medium Enterprise",
+  "Storage Service Provider"
+]
+
+
 export const CreateLeadStatus = async (req, res) => {
   const { status } = req.body;
+  const { organizationId } = req.user;
 
-  const ans = await LeadStatus.create({ name: status });
+  const ans = await LeadStatus.create({ name: status, organizationId });
 
   return res.status(200).json({
     status: true,
@@ -909,47 +924,173 @@ export const CreateLeadStatus = async (req, res) => {
   });
 };
 
+export const createDefaultLeadStatus = async (organizationId) => {
+  try {
+    const existingCount = await LeadStatus.countDocuments({ organizationId });
+
+    if (existingCount > 0) return;
+
+    const leadStatuses = LeadStatuss.map(name => ({
+      name,
+      organizationId
+    }));
+
+    await LeadStatus.insertMany(leadStatuses, { ordered: false });
+  } catch (error) {
+    console.error("❌ Error inserting default lead statuses:", error.message);
+    console.error(error.stack);
+  }
+};
+
+// Get lead statuses for an organization
 export const getLeadStatus = async (req, res) => {
-  const ans = await LeadStatus.find({});
+  try {
+    const { organizationId } = req.user;
 
-  return res.status(200).json({
-    status: true,
-    data: ans,
-  });
+    await createDefaultLeadStatus(organizationId);
+
+    const leadStatuses = await LeadStatus.find({ organizationId }).lean();
+
+    return res.status(200).json({
+      status: true,
+      data: leadStatuses,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching lead statuses:", error.message);
+    console.error(error.stack);
+
+    return res.status(500).json({
+      status: false,
+      message: "Something went wrong while fetching lead statuses.",
+    });
+  }
 };
+
+const leadSourcesNames = [
+  "Advertisement",
+  "Cold call",
+  "Employee Referral",
+  "External Referral",
+  "Online Store",
+  "Partner",
+  "LinkedIn",
+  "Web Download",
+  "Email",
+  "Chat",
+  "Social Media",
+  "Web Research"
+];
+
+// 1. Create default lead sources for an organization
+export const createDefaultLeadStatuses = async (organizationId) => {
+  try {
+    const existingCount = await LeadSource.countDocuments({ organizationId });
+    if (existingCount > 0) return;
+
+    const leadStatuses = leadSourcesNames.map(name => ({
+      name, organizationId, // 🔄 Correct field name
+    }));
+
+    await LeadSource.insertMany(leadStatuses, { ordered: false });
+  } catch (error) {
+    console.error("❌ Error inserting default lead sources:", error.message);
+  }
+};
+
+// 2. Get all lead sources
 export const getLeadSource = async (req, res) => {
-  const ans = await LeadSource.find({});
+  try {
+    const { organizationId } = req.user;
+    console.log(organizationId, "<= At 1004")
 
-  return res.status(200).json({
-    status: true,
-    data: ans,
-  });
+    // Ensure defaults exist
+    await createDefaultLeadStatuses(organizationId);
+
+    const leadSources = await LeadSource.find({ organizationId });
+
+    return res.status(200).json({
+      status: true,
+      data: leadSources,
+    });
+  } catch (error) {
+    console.error("❌ Failed to fetch lead sources:", error.message);
+    return res.status(500).json({
+      status: false,
+      message: "Failed to fetch lead sources. Please try again later.",
+      error: error.message,
+    });
+  }
 };
 
+// 3. Create new lead source
 export const CreateLeadSource = async (req, res) => {
-  const { status } = req.body;
+  try {
+    const { status } = req.body;
+    const { organizationId } = req.user;
 
-  const ans = await LeadSource.create({ name: status });
+    if (!status) {
+      return res.status(400).json({ status: false, message: "Status is required" });
+    }
 
-  return res.status(200).json({
-    status: true,
-    data: ans,
-  });
+    const exists = await LeadSource.findOne({ name: status, organizationId });
+    if (exists) {
+      return res.status(400).json({ status: false, message: "Lead source already exists" });
+    }
+
+    const newLeadSource = await LeadSource.create({
+      name: status, organizationId,
+    });
+
+    return res.status(201).json({
+      status: true,
+      data: newLeadSource,
+      message: "Lead source created successfully",
+    });
+  } catch (error) {
+    console.error("❌ Error creating lead source:", error.message);
+    return res.status(500).json({
+      status: false,
+      message: "Failed to create lead source",
+      error: error.message,
+    });
+  }
 };
 
+// 4. Update lead source by ID
 export const UpdateLeadSource = async (req, res) => {
-  const { status } = req.body;
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
 
-  const ans = await LeadSource.findByIdAndUpdate(
-    { name: status },
-    { new: true }
-  );
+    if (!id || !status) {
+      return res.status(400).json({ status: false, message: "ID and status are required" });
+    }
 
-  return res.status(200).json({
-    status: true,
-    data: ans,
-  });
+    const updatedLeadSource = await LeadSource.findByIdAndUpdate(
+      id,
+      { name: status },
+      { new: true }
+    );
+
+    if (!updatedLeadSource) {
+      return res.status(404).json({ status: false, message: "Lead source not found" });
+    }
+
+    return res.status(200).json({
+      status: true,
+      data: updatedLeadSource,
+      message: "Lead source updated successfully",
+    });
+  } catch (error) {
+    console.error("❌ Error updating lead source:", error.message);
+    return res.status(500).json({
+      status: false,
+      message: "Failed to update lead source",
+      error: error.message,
+    });
+  }
 };
+
 export const UpdateLeadStatus = async (req, res) => {
   const { status } = req.body;
 
@@ -1385,16 +1526,13 @@ export const deleteRole = asyncHandler(async (req, res) => {
 export const CreateLeadNote = async (req, res) => {
   const { LeadId } = req.params;
 
-  const { Note, Status } = req.body;
-  const lead = await Lead.findById(LeadId);
-  lead.LeadStatus = Status;
-  await lead.save();
+  const { Note } = req.body;
 
-  const noteDetail = await LeadNote.create({ Note, Status, LeadId });
+  const noteDetail = await LeadNote.create({ Note, LeadId });
 
   const timeline = await LeadTimeline.create({
     leadId: LeadId,
-    action: `Lead Status updated to ${Status} with Note ${Note}`,
+    action: `New Lead Note Added ${Note}`,
     createdBy: req.user?.fullName || "System"
   });
   console.log(timeline._id)

@@ -16,7 +16,7 @@ export const postActivity = async (req, res) => {
     const { date, checkInTime, breaks, checkOutTime, task, status } = req.body;
 
     // Check and delete in a single step
-    const existingActivity = await ActivityTracker.findOneAndDelete({ userId, date });
+    const existingActivity = await ActivityTracker.findOneAndDelete({ userId });
 
     if (existingActivity) {
       return res.status(200).json({

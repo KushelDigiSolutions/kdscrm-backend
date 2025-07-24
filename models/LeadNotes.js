@@ -1,9 +1,6 @@
 import mongoose from "mongoose";
 
 const mySchema = new mongoose.Schema({
-   Status:{
-    type:String ,
-   } , 
    Date:{
     type:Date , 
     default:Date.now(),
