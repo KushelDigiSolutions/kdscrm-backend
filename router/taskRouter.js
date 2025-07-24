@@ -48,8 +48,8 @@ router.get("/getProjectByUser/:userId", getProjectByUser);
 
 
 // for project task 
-router.post("/createProjectTask/:projectId", CreateProjectTask);
-router.post("/editProjectTask/:projectId/:taskId", EditProjectTask);
+router.post("/createProjectTask/:projectId",isAuthenticated, CreateProjectTask);
+router.post("/editProjectTask/:projectId/:taskId",isAuthenticated, EditProjectTask);
 router.post("/changeTaskStatus/:taskId", changeTaskStatus);
 router.get("/getAllTask", GetAllTask);
 router.get("/getTaskByUser/:userId", GetTaskByUser);

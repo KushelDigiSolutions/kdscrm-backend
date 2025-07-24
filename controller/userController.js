@@ -61,13 +61,13 @@ const generateOTP = () => {
 };
 
 
-const sendOTPEmail = async (email, otp) => {
+const sendOTPEmail = async (organizationId, email, otp) => {
   const subject = 'Your OTP for Password Reset';
   const text = `Your OTP is: ${otp}. It will expire in 10 minutes.`;
   const html = `<p>Your OTP is: <strong>${otp}</strong>. It will expire in 10 minutes.</p>`;
 
   // Use the SendEmail function to send the OTP
-  await SendEmail(email, subject, text, html);
+  await SendEmail(organizationId, email, subject, text, html);
 };
 export const forgetPasswordVerifyOTP = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
@@ -114,6 +114,7 @@ export const forgotPasswordProcess = asyncHandler(async (req, res) => {
     if (userRows.length === 0) {
       return res.status(400).json({ success: false, message: 'Invalid email address.' });
     }
+    const organizationId = userRows[0].organizationId
 
     const otp = generateOTP(); // Generate a 6-digit OTP or whatever logic you use
 
@@ -124,7 +125,7 @@ export const forgotPasswordProcess = asyncHandler(async (req, res) => {
     await storeOTPInDatabase(email, otp);
 
     // Send OTP via email
-    await sendOTPEmail(email, otp);
+    await sendOTPEmail(organizationId, email, otp);
 
     return res.status(200).json({
       success: true,

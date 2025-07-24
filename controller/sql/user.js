@@ -7,6 +7,7 @@ import { SendEmail } from '../../utils/SendEmail.js';
 import Clients from '../../models/Tasks/Clients.js';
 import mongoose from 'mongoose';
 import { mailSender } from '../../utils/SendMail2.js';
+import EmailModel from '../../models/EmailModel.js';
 
 
 /**
@@ -690,7 +691,7 @@ export const createUser = async (req, res) => {
   </div>
 `;
 
-        await SendEmail(email, "Login Details", message, html);
+        await SendEmail(organizationId,email, "Login Details", message, html);
 
         return res.status(201).json({
             status: true,
@@ -899,7 +900,7 @@ export const createAdmin = async (req, res) => {
             Regards,<br/>Kushel Digi Solutions
         </div>`;
 
-        await SendEmail(email, "Your Admin Account is Ready", html, html); // Uncomment if email sending configured
+        await SendEmail(organizationId,email, "Your Admin Account is Ready", html, html); // Uncomment if email sending configured
 
         return res.status(201).json({
             status: true,
@@ -1641,7 +1642,7 @@ export const postAssets = async (req, res) => {
         const query = `INSERT INTO assets (${fields.join(', ')}) VALUES (${placeholders}) `
         await db.execute(query, values);
         console.log(user)
-        await mailSender(
+        await mailSender(organizationId,
             user.email,
             "Regarding Asset Assignment",
             `
@@ -1886,5 +1887,110 @@ export const deleteAsset = async (req, res) => {
             status: false,
             message: "Internal Server Error"
         });
+    }
+};
+
+
+// For Organization Email
+
+// Create
+export const createOrUpdateEmailConfig = async (req, res) => {
+    try {
+        const { organizationId } = req.user; // Assume user is authenticated and orgId comes from token
+        const payload = { ...req.body, organizationId };
+
+        const existing = await EmailModel.findOne({ organizationId });
+
+        if (existing) {
+            // Update existing config
+            const updated = await EmailModel.findOneAndUpdate(
+                { organizationId },
+                payload,
+                { new: true, runValidators: true }
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: "Email config updated successfully.",
+                data: updated,
+            });
+        } else {
+            // Create new config
+            const created = await EmailModel.create(payload);
+            return res.status(201).json({
+                success: true,
+                message: "Email config created successfully.",
+                data: created,
+            });
+        }
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: "Server error",
+            error: err.message,
+        });
+    }
+};
+
+// Read
+export const getEmailConfig = async (req, res) => {
+    try {
+        const { organizationId } = req.user;
+
+        const email = await EmailModel.findOne({ organizationId });
+        if (!email) {
+            return res.status(404).json({
+                success: false,
+                message: "Email config not found for this organization.",
+            });
+        }
+
+        return res.status(200).json({ success: true, message: "Email config fetched", data: email });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Server error", error: err.message });
+    }
+};
+
+// Update
+export const updateEmailConfig = async (req, res) => {
+    try {
+        const { organizationId } = req.body;
+
+        const updated = await EmailModel.findOneAndUpdate(
+            { organizationId },
+            req.body,
+            { new: true, runValidators: true }
+        );
+
+        if (!updated) {
+            return res.status(404).json({
+                success: false,
+                message: "Email config not found to update.",
+            });
+        }
+
+        return res.status(200).json({ success: true, message: "Email config updated", data: updated });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Server error", error: err.message });
+    }
+};
+
+// Delete
+export const deleteEmailConfig = async (req, res) => {
+    try {
+        const { organizationId } = req.user;
+
+        const deleted = await EmailModel.findOneAndDelete({ organizationId });
+
+        if (!deleted) {
+            return res.status(404).json({
+                success: false,
+                message: "Email config not found to delete.",
+            });
+        }
+
+        return res.status(200).json({ success: true, message: "Email config deleted successfully" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Server error", error: err.message });
     }
 };

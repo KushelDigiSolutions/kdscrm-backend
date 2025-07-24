@@ -74,14 +74,14 @@ router.put("/updateDesignation/:id", updateDesignation);
 
 router.get("/getDesignations/:id", getDesignations);
 router.get("/getEmployeess/:id", getEmployess);
-router.get("/getDesignation",isAuthenticated, getDesignation);
+router.get("/getDesignation", isAuthenticated, getDesignation);
 
 router.delete("/deleteDesignation/:id", deleteDesignation);
 
 router.post("/createDocSetup", createDocSetup);
 router.post("/updateDocSetup/:id", updateDocSetup);
 router.delete("/deleteDocSetup/:id", deleteDocSetup);
-router.get("/fetchAllDocs",isAuthenticated, fetchAllDocs);
+router.get("/fetchAllDocs", isAuthenticated, fetchAllDocs);
 
 router.post("/postLeadSource", postLeadSource);
 router.put("/updateLeadSource/:id", updateLeadSources);
@@ -93,14 +93,14 @@ router.put("/updateIndustry/:id", updateIndustry);
 router.get("/getIndustry", getIndustry);
 router.delete("/deleteIndustry/:id", deleteIndustry);
 
-router.post("/postLeadStat", PostLeadStat);
+router.post("/postLeadStat",isAuthenticated, PostLeadStat);
 router.put("/updateLeadStat/:id", updateLeadStat);
-router.get("/getLeadStat", getLeadStat);
+router.get("/getLeadStat", isAuthenticated, getLeadStat);
 router.delete("/deleteLeadStat/:id", deleteLeadStat);
 
-router.post("/postFollow", PostFollow);
+router.post("/postFollow",isAuthenticated, PostFollow);
 router.put("/updateFollow/:id", updateFollow);
-router.get("/getFollow", getFollow);
+router.get("/getFollow", isAuthenticated, getFollow);
 router.delete("/deleteFollow/:id", deleteFollow);
 
 

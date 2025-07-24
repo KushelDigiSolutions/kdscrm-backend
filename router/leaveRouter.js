@@ -145,7 +145,7 @@ router.delete("/deleteAllLeaves", async (req, res) => {
   }
 });
 
-router.post("/acceptLeave/:id", async (req, res) => {
+router.post("/acceptLeave/:id",isAuthenticated, async (req, res) => {
   try {
     const data = await acceptLeaveHandler({ ...req.body, ...req.params });
     if (data.status) {
@@ -157,7 +157,7 @@ router.post("/acceptLeave/:id", async (req, res) => {
     console.log(error);
   }
 });
-router.post("/acceptHalfDay/:id", async (req, res) => {
+router.post("/acceptHalfDay/:id",isAuthenticated, async (req, res) => {
   try {
     const data = await acceptHalfDayHandler({ ...req.body, ...req.params });
     if (data.status) {
@@ -169,7 +169,7 @@ router.post("/acceptHalfDay/:id", async (req, res) => {
     console.log(error);
   }
 });
-router.post("/rejectLeave/:id", async (req, res) => {
+router.post("/rejectLeave/:id",isAuthenticated, async (req, res) => {
   try {
     const data = await rejectLeaveHandler({ ...req.body, ...req.params });
     if (data.status) {
@@ -181,7 +181,7 @@ router.post("/rejectLeave/:id", async (req, res) => {
     console.log(error);
   }
 });
-router.post("/rejectHalfDay/:id", async (req, res) => {
+router.post("/rejectHalfDay/:id",isAuthenticated, async (req, res) => {
   try {
     const data = await rejectHalfDayHandler({ ...req.body, ...req.params });
     if (data.status) {

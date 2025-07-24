@@ -13,7 +13,7 @@ router.get("/fetchFollow/:id", FetchFollow);
 
 
 router.post("/createMeet", isAuthenticated, CreateMeet);
-router.post("/editMeet/:meetId", EditMeet);
+router.post("/editMeet/:meetId",isAuthenticated, EditMeet);
 router.delete("/deleteMeet/:meetId", DeleteMeet);
 router.get("/getMeetByUser/:userId", GetMeetByUser);
 router.get("/fetchTasksAll", FetchAllTask);

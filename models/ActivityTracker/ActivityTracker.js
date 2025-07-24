@@ -19,5 +19,6 @@ const mySchema = new mongoose.Schema({
 });
 
 const ActivityTracker = mongoose.model("ActivityTracker", mySchema);
+mySchema.index({ userId: 1 }, { unique: true });
 
 export default ActivityTracker;

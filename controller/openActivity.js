@@ -102,7 +102,7 @@ export const CreateMeet = async (req, res) => {
       meetTimeFrom, meetTimeTo, Host,
       RelatedTo, Participant, Note, userId, LeadId, MeetingLink
     } = req.body;
-
+    const { organizationId } = req.user;
     // 1. Save meeting details
     const meetDetail = await Meet.create({
       title, meetDateFrom, meetDateTo, Status,
@@ -141,7 +141,7 @@ export const CreateMeet = async (req, res) => {
 
     // 4. Send emails in parallel with Promise.all
     const emailPromises = emailList.map(email =>
-      SendEmail(email, "Meeting Detail", message, html)
+      SendEmail(organizationId, email, "Meeting Detail", message, html)
     );
 
     await Promise.allSettled(emailPromises); // use .settled to avoid failing on one error
@@ -168,6 +168,7 @@ export const EditMeet = async (req, res) => {
   const { title, meetDateFrom, MeetingLink, meetDateTo, Status, meetTimeFrom, meetTimeTo, Host, RelatedTo, Participant, Note, LeadId } = req.body;
 
   const { meetId } = req.params;
+  const { organizationId } = req.user
 
   const meetDetail = await Meet.findByIdAndUpdate(meetId, { title, meetDateFrom, meetDateTo, Status, meetTimeFrom, meetTimeTo, Host, RelatedTo, Participant, Note, LeadId, MeetingLink }, { new: true });
 
@@ -187,7 +188,7 @@ export const EditMeet = async (req, res) => {
 
   // Send email to each participant
   for (const email of emailList) {
-    await SendEmail(email, "Meeting Detail", message, html); // Assuming message and html are defined
+    await SendEmail(organizationId, email, "Meeting Detail", message, html); // Assuming message and html are defined
   }
 
 

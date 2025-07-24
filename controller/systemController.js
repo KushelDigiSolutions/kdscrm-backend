@@ -841,66 +841,136 @@ export const deleteIndustry = asyncHandler(async (req, res) => {
 
 
 // ==================lead status========================
+// import asyncHandler from 'express-async-handler';
+// import LeadStat from '../models/LeadStat.js';
+// import { ApiResponse } from '../utils/ApiResponse.js';
+// import { removeUndefined } from '../utils/removeUndefined.js';
+
+// 🔤 Default lead status names
+const leadNames = [
+  "New",
+  "Connected",
+  "Response Awaited",
+  "Nurturing",
+  "Converted",
+  "Qualified",
+  "Unqualified",
+  "Not Converted",
+  "Junk"
+];
+
+const createDefaultLeadNames = async (organizationId) => {
+  const existingCount = await LeadStat.countDocuments({ organizationId });
+  if (existingCount > 0) return;
+
+  const leadName = leadNames.map(name => ({
+    name,
+    organizationId
+  }));
+
+  try {
+    await LeadStat.insertMany(leadName, { ordered: false });
+  } catch (error) {
+    console.log("Insert error (duplicates ignored):", error?.writeErrors?.[0]?.errmsg || error.message);
+  }
+};
+
+export const getLeadStat = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    await createDefaultLeadNames(organizationId)
+    const data = await LeadStat.find({ organizationId });
+    return res.status(200)
+      .json(new ApiResponse(200, data, "Lead Status fetched Successfully"));
+  } catch (error) {
+    return res.status(500).json(
+      new ApiResponse(500, null, "❌ Failed to create lead status."))
+  }
+}
+
+// 🟢 Create a custom lead status
 export const PostLeadStat = asyncHandler(async (req, res) => {
   const { name } = req.body;
-  const existLeadStat = await LeadStat.findOne({ name });
-  if (existLeadStat) {
-    return res.status(400).json({
-      success: false,
-      message: "LeadSource Name Alreday Exist",
-    });
+  const { organizationId } = req.user;
+
+  try {
+    const exists = await LeadStat.findOne({ name, organizationId });
+    if (exists) {
+      return res.status(400).json(new ApiResponse(400, null, "⚠️ Lead status already exists."));
+    }
+
+    const newStat = await LeadStat.create({ name, organizationId });
+
+    return res.status(200).json(
+      new ApiResponse(200, newStat, "✅ Lead status created successfully.")
+    );
+  } catch (error) {
+    console.error("❌ Error in PostLeadStat:", error.message);
+    return res.status(500).json(
+      new ApiResponse(500, null, "❌ Failed to create lead status.")
+    );
   }
-  const newStat = await LeadStat.create({
-    name,
-  });
-  return res
-    .status(200)
-    .json(new ApiResponse(200, newStat, " successfully posted", existLeadStat));
 });
 
-export const getLeadStat = asyncHandler(async (req, res) => {
-  const data = await LeadStat.find({});
-  return res
-    .status(200)
-    .json(new ApiResponse(200, data, "Lead Status fetched Successfully"));
-});
 
+// 🟠 Update a lead status
 export const updateLeadStat = asyncHandler(async (req, res) => {
   const { name } = req.body;
   const { id } = req.params;
-  let updateObj = removeUndefined({ name });
-  // console.log(status, name);
-  // console.log(id);
 
-  const updateLeadStatus = await LeadStat.findByIdAndUpdate(
-    id,
-    {
-      $set: updateObj,
-    },
-    {
-      new: true,
+  try {
+    const updateObj = removeUndefined({ name });
+
+    const updated = await LeadStat.findByIdAndUpdate(
+      id,
+      { $set: updateObj },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json(new ApiResponse(404, null, "⚠️ Lead status not found."));
     }
-  );
-  return res
-    .status(200)
-    .json(new ApiResponse(200, updateLeadStatus, "Updated  Successfully"));
+
+    return res.status(200).json(
+      new ApiResponse(200, updated, "✅ Lead status updated successfully.")
+    );
+  } catch (error) {
+    console.error("❌ Error updating lead status:", error.message);
+    return res.status(500).json(
+      new ApiResponse(500, null, "❌ Failed to update lead status.")
+    );
+  }
 });
 
+// 🔴 Delete a lead status
 export const deleteLeadStat = asyncHandler(async (req, res) => {
-
   const { id } = req.params;
 
-  const data = await LeadStat.findByIdAndDelete(id);
-  return res
-    .status(200)
-    .json(new ApiResponse(200, data, "Deleted   Successfully"));
+  try {
+    const deleted = await LeadStat.findByIdAndDelete(id);
+
+    if (!deleted) {
+      return res.status(404).json(new ApiResponse(404, null, "⚠️ Lead status not found."));
+    }
+
+    return res.status(200).json(
+      new ApiResponse(200, deleted, "🗑️ Lead status deleted successfully.")
+    );
+  } catch (error) {
+    console.error("❌ Error deleting lead status:", error.message);
+    return res.status(500).json(
+      new ApiResponse(500, null, "❌ Failed to delete lead status.")
+    );
+  }
 });
+
 
 
 
 export const PostFollow = asyncHandler(async (req, res) => {
+  const { organizationId } = req.user
   const { name } = req.body;
-  const existFollow = await FollowUpType.findOne({ name });
+  const existFollow = await FollowUpType.findOne({ name, organizationId });
   if (existFollow) {
     return res.status(400).json({
       success: false,
@@ -909,14 +979,39 @@ export const PostFollow = asyncHandler(async (req, res) => {
   }
   const newStat = await FollowUpType.create({
     name,
+    organizationId
   });
   return res
     .status(200)
     .json(new ApiResponse(200, newStat, " successfully posted", existFollow));
 });
 
+const leadFollows = [
+  "Call",
+  "Email",
+  "Meeting",
+  "Demo / Presentation",
+  "Site Visit",
+  "Chat",
+  "Other"
+]
+
+const createDefaultLeadSfollow = async (organizationId) => {
+  const existingCount = await FollowUpType.countDocuments({ organizationId: organizationId });
+  if (existingCount > 0) return;
+  const leadStatuses = leadFollows.map(name => ({ name, organizationId: organizationId }));
+  try {
+    await FollowUpType.insertMany(leadStatuses, { ordered: false });
+  } catch (error) {
+    console.error("LeadStat insert error:", error);
+  }
+};
+
 export const getFollow = asyncHandler(async (req, res) => {
-  const data = await FollowUpType.find({});
+  const { organizationId } = req.user;
+  await createDefaultLeadSfollow(organizationId);
+
+  const data = await FollowUpType.find({ organizationId });
   return res
     .status(200)
     .json(new ApiResponse(200, data, "Follow up fetched Successfully"));

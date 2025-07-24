@@ -26,7 +26,7 @@ export const CreateProject = async (req, res) => {
         message: "Require all data"
       })
     }
-
+    
     const clientDetail = await Clients.findById(client);
     // if (!clientDetail) {
     //   return res.status(404).json({
@@ -37,7 +37,7 @@ export const CreateProject = async (req, res) => {
     Members.forEach(async (user) => {
       const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [user]);
       const userdetail = users[0]
-      await mailSender(userdetail.email, `New Project`, `<div>
+      await mailSender(organizationId, userdetail.email, `New Project`, `<div>
               <div>projectName: ${projectName}</div>
               <div>startDate: ${startDate}</div>
               <div>deadline: ${deadline}</div>
@@ -134,6 +134,7 @@ export const deleteProject = async (req, res) => {
 export const createTask = async (req, res) => {
   try {
     const { taskName, startDate, dueDate, priority, Members, Project, Status, description, taskfile } = req.body;
+    const { organizationId } = req.user
 
     if (!taskName || !startDate || !dueDate || !Members || !Project, !description) {
       return res.status(400).json({
@@ -165,7 +166,7 @@ export const createTask = async (req, res) => {
     Members.forEach(async (user) => {
       const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [user]);
       const userdetail = users[0]
-      await mailSender(
+      await mailSender(organizationId,
         userdetail.email,
         `New Task Assigned`,
         `
@@ -269,7 +270,7 @@ export const editTask = async (req, res) => {
       const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
       const userdetail = users[0];
       if (userdetail?.email) {
-        await mailSender(
+        await mailSender(organizationId,
           userdetail.email,
           `New Task Assigned`,
           `
@@ -517,9 +518,9 @@ export const getClientProjectResources = async (req, res) => {
     // 4. Get SQL user info
     const [users] = allUserIds.length
       ? await db.execute(
-          `SELECT * FROM users WHERE id IN (${allUserIds.map(() => '?').join(',')})`,
-          allUserIds
-        )
+        `SELECT * FROM users WHERE id IN (${allUserIds.map(() => '?').join(',')})`,
+        allUserIds
+      )
       : [[]];
 
     const userMap = {};

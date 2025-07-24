@@ -2,6 +2,7 @@ import Lead from "../models/Lead/Lead.js";
 import LeadTimeline from "../models/LeadTimeline.js";
 import db from "../db/sql_conn.js"
 import Deal from "../models/Deal.js"
+import AccountModel from "../models/Account.js";
 
 
 /**
@@ -349,6 +350,32 @@ export const editLead = async (req, res) => {
     }
 };
 
+export const updateLeadStatus = async (req, res) => {
+    try {
+        const { LeadStatus } = req.body;
+        const { id } = req.params;
+        const leadDetail = await Lead.findByIdAndUpdate(
+            id, { LeadStatus })
+        const timeline = await LeadTimeline.create({
+            leadId: id,
+            action: `Lead Status update to ${LeadStatus}`,
+            createdBy: req.user?.fullName || "System"
+        });
+
+        return res.status(200).json({
+            status: true,
+            message: "Successfully updated",
+            data: leadDetail,
+        });
+    } catch (error) {
+        console.log("error ", error);
+        return res.status(500).json({
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+}
+
 export const deleteLeads = async (req, res) => {
     try {
         const { id } = req.params;
@@ -477,14 +504,19 @@ export const getLeadTimeline = async (req, res) => {
 };
 
 // Convert To Deals
-
 export const convertLeadToDeal = async (req, res) => {
     try {
         const {
-            dealName, amount, closingDate, stage, campaignSource, contactRole, userId, organizationId
+            accountName,
+            dealName,
+            amount,
+            closingDate,
+            stage,
+            campaignSource,
+            contactRole
         } = req.body;
 
-        // const { id: userId, organizationId } = req.user;
+        const { id: userId, organizationId, fullName } = req.user;
         const { leadId } = req.params;
 
         // 1. Validate Lead
@@ -493,7 +525,26 @@ export const convertLeadToDeal = async (req, res) => {
             return res.status(404).json({ status: false, message: "Lead not found" });
         }
 
-        // 2. Create Deal
+        // 2. Check if Account already exists (case-insensitive match for accountName)
+        const existingAccount = await AccountModel.findOne({
+            accountName: { $regex: new RegExp(`^${accountName}$`, 'i') },
+            organizationId
+        });
+
+        let account;
+
+        if (existingAccount) {
+            account = existingAccount;
+        } else {
+            // 3. Create new Account
+            account = await AccountModel.create({
+                accountName,
+                organizationId,
+                createdBy: userId
+            });
+        }
+
+        // 4. Create Deal linked with Account and Lead
         const newDeal = await Deal.create({
             dealName,
             amount,
@@ -502,22 +553,22 @@ export const convertLeadToDeal = async (req, res) => {
             campaignSource,
             contactRole,
             leadId,
+            accountName: account._id, // Reference to Account
             organizationId,
             createdBy: userId
         });
 
-        // 3. Update Lead (optional fields)
+        // 5. Update Lead
         lead.status = "Converted";
         lead.closeDate = closingDate;
-        lead.save();
+        await lead.save();
 
-        // 4. Push to Lead Timeline (optional)
-        const timeline = await LeadTimeline.create({
-            leadId: leadId,
-            action: "Converted To Deal",
-            createdBy: req.user?.fullName || "System"
+        // 6. Push to Timeline
+        await LeadTimeline.create({
+            leadId,
+            action: "Converted to Deal",
+            createdBy: fullName || "System"
         });
-        console.log(timeline._id)
 
         return res.status(201).json({
             status: true,
@@ -526,10 +577,75 @@ export const convertLeadToDeal = async (req, res) => {
         });
 
     } catch (err) {
-        console.error(err);
-        return res.status(500).json({ status: false, message: "Server Error", error: err.message });
+        console.error("Convert Lead Error:", err);
+        return res.status(500).json({
+            status: false,
+            message: "Server Error",
+            error: err.message
+        });
     }
 };
+
+export const accountToDeal = async (req, res) => {
+    try {
+        const {
+            accountName,
+            dealName,
+            amount,
+            closingDate,
+            stage,
+            campaignSource,
+            contactRole,
+        } = req.body;
+
+        const { id: userId, organizationId } = req.user;
+
+        // Validate required fields
+        if (!accountName || !dealName || !amount || !closingDate || !stage) {
+            return res.status(400).json({
+                status: false,
+                message: "Missing required fields: accountName, dealName, amount, closingDate, stage",
+            });
+        }
+
+        // Find the account by name
+        const account = await AccountModel.findOne({ accountName, organizationId });
+        if (!account) {
+            return res.status(404).json({
+                status: false,
+                message: "Account not found",
+            });
+        }
+
+        // Create new deal
+        const newDeal = await Deal.create({
+            dealName,
+            amount,
+            closingDate,
+            stage,
+            campaignSource: campaignSource || "",
+            contactRole: contactRole || "",
+            accountName: account._id,
+            organizationId,
+            createdBy: userId,
+        });
+
+        return res.status(201).json({
+            status: true,
+            message: "Lead converted to deal successfully",
+            data: newDeal,
+        });
+
+    } catch (err) {
+        console.error("Convert Lead Error:", err);
+        return res.status(500).json({
+            status: false,
+            message: "Internal server error",
+            error: err.message,
+        });
+    }
+};
+
 
 export const GetAllDeals = async (req, res) => {
     try {
@@ -626,3 +742,289 @@ export const getDeal = async (req, res) => {
         });
     }
 }
+
+// TimeLine Notes
+
+export const createTimeLineNote = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { note } = req.body;
+
+        if (!note) return res.status(400).json({ success: false, message: "Note is required" });
+
+        const timeline = await LeadTimeline.findById(id);
+        if (!timeline) return res.status(404).json({ success: false, message: "Timeline not found" });
+
+        timeline.notes.push(note);
+        await timeline.save();
+
+        res.status(200).json({ success: true, message: "Note added", data: timeline.notes });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+// Get all notes for a timeline
+export const getTimelineNotes = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const timeline = await LeadTimeline.findById(id);
+        if (!timeline) return res.status(404).json({ success: false, message: "Timeline not found" });
+
+        res.status(200).json({ success: true, data: timeline.notes });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+// Update a specific note by index
+export const updateTimelineNote = async (req, res) => {
+    try {
+        const { timelineId, noteIndex } = req.params;
+        const { note } = req.body;
+
+        const timeline = await LeadTimeline.findById(timelineId);
+        if (!timeline) return res.status(404).json({ success: false, message: "Timeline not found" });
+
+        if (!timeline.notes[noteIndex]) {
+            return res.status(404).json({ success: false, message: "Note not found" });
+        }
+
+        timeline.notes[noteIndex] = note;
+        await timeline.save();
+
+        return res.status(200).json({ success: true, message: "Note updated", data: timeline.notes });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+// Delete a specific note by index
+export const deleteTimelineNote = async (req, res) => {
+    try {
+        const { timelineId, noteIndex } = req.params;
+
+        const timeline = await LeadTimeline.findById(timelineId);
+        if (!timeline) return res.status(404).json({ success: false, message: "Timeline not found" });
+
+        if (!timeline.notes[noteIndex]) {
+            return res.status(404).json({ success: false, message: "Note not found" });
+        }
+
+        timeline.notes.splice(noteIndex, 1);
+        await timeline.save();
+
+        res.status(200).json({ success: true, message: "Note deleted", data: timeline.notes });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+
+
+// Create Account
+export const createAccount = async (req, res) => {
+    try {
+        const {
+            accountOwner,
+            accountName,
+            parentAccount,
+            accountNumber,
+            website,
+            tickerSymbol,
+            accountType,
+            ownership,
+            industry,
+            annualRevenue,
+            sicCode,
+            exchangeRate,
+            currency,
+            billingStreet,
+            billingCity,
+            billingState,
+            billingCode,
+            billingCountry,
+            shippingStreet,
+            shippingCity,
+            shippingState,
+            shippingCode,
+            shippingCountry, description
+        } = req.body;
+        const { organizationId } = req.user
+
+        const newAccount = new AccountModel({
+            accountOwner,
+            accountName,
+            parentAccount,
+            accountNumber,
+            website,
+            tickerSymbol,
+            accountType,
+            ownership,
+            industry,
+            annualRevenue,
+            sicCode,
+            exchangeRate,
+            currency,
+            description,
+            billingStreet,
+            billingCity,
+            billingState,
+            billingCode,
+            billingCountry,
+            shippingStreet,
+            shippingCity,
+            shippingState,
+            shippingCode,
+            shippingCountry,
+            description,
+            organizationId
+        });
+
+        await newAccount.save();
+        return res.status(201).json({
+            success: true,
+            message: 'Account created successfully',
+            account: newAccount
+        });
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+};
+
+// Update Account
+export const updateAccount = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            accountOwner,
+            accountName,
+            parentAccount,
+            accountNumber,
+            website,
+            tickerSymbol,
+            accountType,
+            ownership,
+            industry,
+            annualRevenue,
+            sicCode,
+            exchangeRate,
+            currency,
+            description,
+            billingStreet,
+            billingCity,
+            billingState,
+            billingCode,
+            billingCountry,
+            shippingStreet,
+            shippingCity,
+            shippingState,
+            shippingCode,
+            shippingCountry
+
+        } = req.body;
+
+        const updatedData = {
+            accountOwner,
+            accountName,
+            parentAccount,
+            accountNumber,
+            website,
+            tickerSymbol,
+            accountType,
+            ownership,
+            industry,
+            annualRevenue,
+            sicCode,
+            exchangeRate,
+            currency,
+            description,
+            billingStreet,
+            billingCity,
+            billingState,
+            billingCode,
+            billingCountry,
+            shippingStreet,
+            shippingCity,
+            shippingState,
+            shippingCode,
+            shippingCountry
+        };
+
+        const updatedAccount = await AccountModel.findByIdAndUpdate(
+            id,
+            updatedData,
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedAccount) {
+            return res.status(404).json({ message: 'Account not found' });
+        }
+        return res.status(200).json({ success: true, message: 'Account updated successfully', account: updatedAccount });
+    } catch (error) {
+        return res.status(400).json({ success: false, message: 'Error updating account', error: error.message });
+    }
+};
+
+// Get All Acounts  
+export const getAllAccounts = async (req, res) => {
+    try {
+        const { organizationId } = req.user;
+
+        // Fetch accounts by organizationId and populate parentAccount
+        const accounts = await AccountModel.find({ organizationId }).populate('parentAccount');
+
+        return res.status(200).json({
+            success: true,
+            message: "Accounts fetched successfully",
+            data: accounts,
+        });
+    } catch (error) {
+        console.error("Error fetching accounts:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch accounts",
+            error: error.message,
+        });
+    }
+};
+
+// Get Single Account
+export const getAccount = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const account = await AccountModel.findById(id).populate('parentAccount')
+        return res.status(200).json({
+            success: true,
+            message: "Accounts fetched successfully",
+            data: account,
+        });
+    } catch (error) {
+
+    }
+}
+
+// Delete A Account
+export const deleteAccount = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await AccountModel.findByIdAndDelete(id);
+
+        res.status(200).json({
+            success: true,
+            message: "Account deleted successfully",
+        });
+    } catch (error) {
+        console.error("Error deleting account:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to delete account",
+            error: error.message,
+        });
+    }
+};

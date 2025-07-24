@@ -1,5 +1,6 @@
 import express from "express";
 const app = express();
+import { createTransport } from "nodemailer";
 import cors from "cors";
 import userRouter from "./router/userRouter.js";
 import payrollRouter from "./router/payrollRouter.js";
@@ -126,6 +127,59 @@ const task = cron.schedule('55 23 * * *', async () => {
 }, {
   scheduled: true,
   timezone: 'Asia/Kolkata'
+});
+
+app.post("/email-settings/test", async (req, res) => {
+  try {
+    const { to, subject, text, host, port, secure, user, pass, from } = req.body;
+
+    const transporter = createTransport({
+      host: host,
+      port: port,
+      secure: secure,
+      auth: {
+        user: user,
+        pass: pass
+      },
+      from: from,
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+    await transporter.sendMail({
+      from: from, // ✅ Use value from req.body
+      to,
+      subject,
+      text,
+      html: `<div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 30px;">
+  <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 30px;">
+    <h1 style="color: #333333; font-size: 24px; margin-bottom: 20px;">This is a test email</h1>
+    <p style="color: #555555; font-size: 16px; line-height: 1.6;">
+      Sent via <strong>HRMS</strong> with custom config.
+    </p>
+  </div>
+</div>`,
+    });
+
+    res.status(200).json({
+      status: true,
+      message: "Test mail sent successfully.",
+    });
+  } catch (error) {
+    console.error("Mail Error:", error);
+    let userMessage = "Failed to send test mail.";
+    if (error.code === "EAUTH") {
+      userMessage = "Authentication failed. Please check your email username or password.";
+    } else if (error.code === "ECONNECTION") {
+      userMessage = "Connection failed. Please check your SMTP host and port.";
+    } else if (error.code === "ENOTFOUND") {
+      userMessage = "SMTP server not found. Please verify the host address.";
+    } else if (error.response && error.response.includes("Invalid recipient")) {
+      userMessage = "Invalid recipient email address.";
+    } else if (error.message.includes("self signed certificate")) {
+      userMessage = "SSL certificate issue. Try using TLS or set encryption properly.";
+    }
+  }
 });
 
 task.start();
