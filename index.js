@@ -41,6 +41,7 @@ import PermissionRouter from "./router/PermissionRouter.js";
 // import Trainer from "./models/Trainer/Trainer.js";
 import errorHandler from "./middleware/errorHandler.js";
 import sqlRouter from "./router/sql.js"
+import googleCalender from "./router/integrations/googleCalender.js" 
 
 
 dotenv.config();
@@ -101,6 +102,7 @@ app.use("/api", sqlRouter)
 app.use("/permission", PermissionRouter);
 
 app.use("/latest_project", ProjectRoute)
+app.use("/api", googleCalender)
 
 const task = cron.schedule('55 23 * * *', async () => {
 
