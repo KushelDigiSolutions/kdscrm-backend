@@ -6,10 +6,13 @@ const emailSchema = new mongoose.Schema({
         unique: true,
         required: true,
     },
+    serviceProvider: {
+        type: String,
+        required: true,
+    },
     host: {
         type: String,
         required: true,
-       
     },
     port: {
         type: Number,

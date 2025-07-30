@@ -13,8 +13,8 @@ import {
 
 const router = Router();
 
-router.get('/auth/google', authSetup);
-router.get('/auth/google/callback', authRedirect);
+router.get('/api/auth/google', authSetup);
+router.get('/api/auth/google/callback', authRedirect);
 
 // Calendar routes
 // Add to your routes file
