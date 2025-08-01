@@ -59,10 +59,10 @@ const mySchema = new mongoose.Schema({
     ref: 'Quatation'
   }],
 
-  dynamicFields: {
-    type: mongoose.Schema.Types.Mixed,
-    default: {},
-  },
+  // dynamicFields: {
+  //   type: mongoose.Schema.Types.Mixed,
+  //   default: {},
+  // },
   organizationId: String
 });
 

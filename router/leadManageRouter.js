@@ -3,7 +3,7 @@ import {
     createLead, getLead, getAllLeads, editLead, getLeadTimeline, convertLeadToDeal, GetAllDeals, getDeal, createExternalLead, updateLeadStatus, createTimeLineNote,
     getTimelineNotes,
     updateTimelineNote,
-    deleteTimelineNote,
+    deleteTimelineNote, editDeal,
     createAccount, updateAccount, getAllAccounts, getAccount, accountToDeal, deleteAccount
 } from "../controller/leadManagement.js"
 import isAuthenticated from "../middleware/auth.js"
@@ -22,11 +22,13 @@ router.post("/accountToDeal", isAuthenticated, accountToDeal);
 router.get("/GetAllDeals", isAuthenticated, GetAllDeals);
 router.get("/getDeal/:id", getDeal);
 router.post("/createExternalLead", createExternalLead)
+router.post("/updateDeal/:id", isAuthenticated, editDeal);
 
-router.post("/timeline/:id/note", createTimeLineNote);
-router.get("/timeline/:id/notes", getTimelineNotes);
-router.put("/timeline/:timelineId/note/:noteIndex", updateTimelineNote);
-router.delete("/timeline/:timelineId/note/:noteIndex", deleteTimelineNote);
+
+router.post('/timeline/:timelineId/note', createTimeLineNote);
+router.get('/timeline/:timelineId/notes', getTimelineNotes);
+router.put('/timeline/:timelineId/note/:noteIndex', updateTimelineNote);
+router.delete('/timeline/:timelineId/note/:noteIndex', deleteTimelineNote);
 
 router.post("/createAccount", isAuthenticated, createAccount);
 router.put("/updateAccount/:id", updateAccount);

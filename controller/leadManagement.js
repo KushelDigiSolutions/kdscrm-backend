@@ -52,7 +52,6 @@ export const createLead = async (req, res) => {
             LinkedIn,
             DescriptionInfo,
             date,
-            dynamicFields
         } = req.body;
 
         const leadDetail = await Lead.create({
@@ -86,7 +85,6 @@ export const createLead = async (req, res) => {
             image,
             date,
             LinkedIn,
-            dynamicFields,
             organizationId
         });
         console.log("Created", leadDetail.organizationId)
@@ -212,140 +210,52 @@ export const createExternalLead = async (req, res) => {
         });
     }
 }
+
 export const editLead = async (req, res) => {
     try {
-        const {
-            LeadOwner,
-            LeadCreator,
-            image,
-            Company,
-            FirstName,
-            LastName,
-            Title,
-            Email,
-            Phone,
-            Fax,
-            Mobile,
-            Website,
-            LeadSource,
-            NoOfEmployee,
-            Industry,
-            LeadStatus,
-            AnnualRevenue,
-            Rating,
-            EmailOptOut,
-            SkypeID,
-            SecondaryEmail,
-            Twitter,
-            Street,
-            City,
-            State,
-            ZipCode,
-            Country,
-            LinkedIn,
-            DescriptionInfo,
-            date,
-            status,
-            dynamicFields
-        } = req.body;
+        const { id } = req.params;
+        const oldLead = await Lead.findById(id);
+        if (!oldLead) {
+            return res.status(404).json({ message: "Lead not found" });
+        }
 
-        // Ensure id is passed as a parameter
-        const id = req.params.id;
-        const data = removeUndefined({
-            LeadOwner,
-            LeadCreator,
-            image,
-            Company,
-            FirstName,
-            LastName,
-            Title,
-            Email,
-            Phone,
-            Fax,
-            Mobile,
-            Website,
-            LeadSource,
-            NoOfEmployee,
-            Industry,
-            LeadStatus,
-            AnnualRevenue,
-            Rating,
-            EmailOptOut,
-            SkypeID,
-            SecondaryEmail,
-            Twitter,
-            Street,
-            City,
-            State,
-            ZipCode,
-            Country,
-            LinkedIn,
-            DescriptionInfo,
-            date,
-            status,
-            dynamicFields
-        })
+        const updates = req.body;
+        const data = removeUndefined(updates);
 
-        // Update lead details
-        const leadDetail = await Lead.findByIdAndUpdate(
-            id,
-            {
-                LeadOwner,
-                LeadCreator,
-                image,
-                Company,
-                FirstName,
-                LastName,
-                Title,
-                Email,
-                Phone,
-                Fax,
-                Mobile,
-                Website,
-                LeadSource,
-                NoOfEmployee,
-                Industry,
-                LeadStatus,
-                AnnualRevenue,
-                Rating,
-                EmailOptOut,
-                SkypeID,
-                SecondaryEmail,
-                Twitter,
-                Street,
-                City,
-                State,
-                ZipCode,
-                LinkedIn,
-                Country,
-                DescriptionInfo,
-                date,
-                status,
-                dynamicFields
-            },
-            { new: true }
-        );
-        const updatedFields = Object.keys(data); // like ["FirstName", "Email", "Phone"]
+        const leadDetail = await Lead.findByIdAndUpdate(id, data, { new: true });
 
-        const actionMessage = `${updatedFields.join(", ")} field${updatedFields.length > 1 ? "s" : ""} updated`;
+        const updatedFields = Object.keys(data);
+        let noteString = "";
 
-        const timeline = await LeadTimeline.create({
-            leadId: id,
-            action: actionMessage,
-            createdBy: req.user?.fullName || "System"
+        updatedFields.forEach((field) => {
+            const oldVal = oldLead[field];
+            const newVal = data[field];
+
+            if (oldVal !== undefined && oldVal !== newVal) {
+                noteString += `Field '${field}' updated from '${oldVal}' to '${newVal}'. `;
+            }
         });
-        console.log(timeline._id)
+
+        // Only create a timeline entry if something was actually updated
+        if (noteString.trim() !== "") {
+            await LeadTimeline.create({
+                leadId: id,
+                action: "Lead Edited",
+                createdBy: req.user?.fullName || "System",
+                notes: [{ note: noteString.trim() }]
+            });
+        }
 
         return res.status(200).json({
             status: true,
             message: "Successfully updated",
-            data: leadDetail,
+            data: leadDetail
         });
     } catch (error) {
         console.log("error ", error);
         return res.status(500).json({
             message: "Internal server error",
-            error: error.message,
+            error: error.message
         });
     }
 };
@@ -553,7 +463,7 @@ export const convertLeadToDeal = async (req, res) => {
             campaignSource,
             contactRole,
             leadId,
-            accountName: account._id, // Reference to Account
+            accountName: account._id,
             organizationId,
             createdBy: userId
         });
@@ -645,7 +555,6 @@ export const accountToDeal = async (req, res) => {
         });
     }
 };
-
 
 export const GetAllDeals = async (req, res) => {
     try {
@@ -743,37 +652,93 @@ export const getDeal = async (req, res) => {
     }
 }
 
+export const editDeal = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const oldLead = await Deal.findById(id);
+        if (!oldLead) {
+            return res.status(404).json({ message: "Deal not found" });
+        }
+
+        const updates = req.body;
+        const data = removeUndefined(updates);
+
+        const leadDetail = await Deal.findByIdAndUpdate(id, data, { new: true });
+
+        const updatedFields = Object.keys(data);
+        let noteString = "";
+
+        updatedFields.forEach((field) => {
+            const oldVal = oldLead[field];
+            const newVal = data[field];
+
+            if (oldVal !== undefined && oldVal !== newVal) {
+                noteString += `Field '${field}' updated from '${oldVal}' to '${newVal}'. `;
+            }
+        });
+
+        // Only create a timeline entry if something was actually updated
+        if (noteString.trim() !== "") {
+            await LeadTimeline.create({
+                leadId: id,
+                action: "Deal Edited",
+                createdBy: req.user?.fullName || "System",
+                notes: [{ note: noteString.trim() }]
+            });
+        }
+
+        return res.status(200).json({
+            status: true,
+            message: "Successfully updated",
+            data: leadDetail
+        });
+    } catch (error) {
+        console.log("error ", error);
+        return res.status(500).json({
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+}
+
+
 // TimeLine Notes
 
 export const createTimeLineNote = async (req, res) => {
     try {
-        const { id } = req.params;
+        const { timelineId } = req.params;
         const { note } = req.body;
 
-        if (!note) return res.status(400).json({ success: false, message: "Note is required" });
+        if (!note) {
+            return res.status(400).json({ success: false, message: "Note is required" });
+        }
 
-        const timeline = await LeadTimeline.findById(id);
-        if (!timeline) return res.status(404).json({ success: false, message: "Timeline not found" });
+        const timeline = await LeadTimeline.findById(timelineId);
+        if (!timeline) {
+            return res.status(404).json({ success: false, message: "Timeline not found" });
+        }
 
-        timeline.notes.push(note);
+        timeline.notes.push({ note }); // ✅ wrap as object
         await timeline.save();
 
         res.status(200).json({ success: true, message: "Note added", data: timeline.notes });
     } catch (error) {
-        res.status(500).json({ success: false, message: "Server error" });
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
 
-// Get all notes for a timeline
 export const getTimelineNotes = async (req, res) => {
     try {
-        const { id } = req.params;
-        const timeline = await LeadTimeline.findById(id);
-        if (!timeline) return res.status(404).json({ success: false, message: "Timeline not found" });
+        const { timelineId } = req.params;
+
+        const timeline = await LeadTimeline.findById(timelineId);
+        if (!timeline) {
+            return res.status(404).json({ success: false, message: "Timeline not found" });
+        }
 
         res.status(200).json({ success: true, data: timeline.notes });
     } catch (error) {
-        res.status(500).json({ success: false, message: "Server error" });
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
 
@@ -783,19 +748,22 @@ export const updateTimelineNote = async (req, res) => {
         const { timelineId, noteIndex } = req.params;
         const { note } = req.body;
 
-        const timeline = await LeadTimeline.findById(timelineId);
-        if (!timeline) return res.status(404).json({ success: false, message: "Timeline not found" });
+        if (!note) {
+            return res.status(400).json({ success: false, message: "Note is required" });
+        }
 
-        if (!timeline.notes[noteIndex]) {
+        const timeline = await LeadTimeline.findById(timelineId);
+        if (!timeline || !timeline.notes[noteIndex]) {
             return res.status(404).json({ success: false, message: "Note not found" });
         }
 
-        timeline.notes[noteIndex] = note;
+        timeline.notes[noteIndex].note = note;
+        timeline.notes[noteIndex].updatedAt = new Date();
         await timeline.save();
 
-        return res.status(200).json({ success: true, message: "Note updated", data: timeline.notes });
+        res.status(200).json({ success: true, message: "Note updated", data: timeline.notes[noteIndex] });
     } catch (error) {
-        return res.status(500).json({ success: false, message: "Server error" });
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
 
@@ -805,9 +773,7 @@ export const deleteTimelineNote = async (req, res) => {
         const { timelineId, noteIndex } = req.params;
 
         const timeline = await LeadTimeline.findById(timelineId);
-        if (!timeline) return res.status(404).json({ success: false, message: "Timeline not found" });
-
-        if (!timeline.notes[noteIndex]) {
+        if (!timeline || !timeline.notes[noteIndex]) {
             return res.status(404).json({ success: false, message: "Note not found" });
         }
 
@@ -816,7 +782,7 @@ export const deleteTimelineNote = async (req, res) => {
 
         res.status(200).json({ success: true, message: "Note deleted", data: timeline.notes });
     } catch (error) {
-        res.status(500).json({ success: false, message: "Server error" });
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
 

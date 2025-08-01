@@ -1,6 +1,10 @@
 // models/LeadTimeline.js
 import mongoose from "mongoose";
 
+const noteSchema = new mongoose.Schema({
+    note: { type: String, required: true }
+}, { timestamps: true });
+
 const leadTimelineSchema = new mongoose.Schema({
     leadId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -12,7 +16,7 @@ const leadTimelineSchema = new mongoose.Schema({
         required: true
     },
     notes: {
-        type: [String],
+        type: [noteSchema],
         default: []
     },
     createdBy: {
