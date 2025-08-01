@@ -55,7 +55,6 @@ export const createLead = async (req, res) => {
       Country,
       DescriptionInfo,
       date,
-      dynamicFields
     } = req.body;
 
     const leadDetail = await Lead.create({
@@ -87,8 +86,7 @@ export const createLead = async (req, res) => {
       Country,
       DescriptionInfo,
       image,
-      date,
-      dynamicFields
+      date
     });
 
     return res.status(200).json({
@@ -1260,8 +1258,7 @@ export const editLead = async (req, res) => {
       ZipCode,
       Country,
       DescriptionInfo,
-      date,
-      dynamicFields
+      date
     } = req.body;
 
     // Ensure id is passed as a parameter
@@ -1299,8 +1296,7 @@ export const editLead = async (req, res) => {
         ZipCode,
         Country,
         DescriptionInfo,
-        date,
-        dynamicFields
+        date
       },
       { new: true }
     );
@@ -1545,11 +1541,11 @@ export const CreateLeadNote = async (req, res) => {
 export const UpdateLeadNote = async (req, res) => {
   const { noteId } = req.params;
 
-  const { Note, Status } = req.body;
+  const { Note } = req.body;
 
   const noteDetail = await LeadNote.findByIdAndUpdate(
     noteId,
-    { Note, Status },
+    { Note },
     { new: true }
   );
   return res.status(200).json({
