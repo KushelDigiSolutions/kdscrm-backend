@@ -423,7 +423,8 @@ export const convertLeadToDeal = async (req, res) => {
             closingDate,
             stage,
             campaignSource,
-            contactRole
+            contactRole,
+            createNewDeal,
         } = req.body;
 
         const { id: userId, organizationId, fullName } = req.user;
@@ -432,29 +433,37 @@ export const convertLeadToDeal = async (req, res) => {
         // 1. Validate Lead
         const lead = await Lead.findById(leadId);
         if (!lead) {
-            return res.status(404).json({ status: false, message: "Lead not found" });
+            return res
+                .status(404)
+                .json({ status: false, message: "Lead not found" });
         }
 
-        // 2. Check if Account already exists (case-insensitive match for accountName)
-        const existingAccount = await AccountModel.findOne({
-            accountName: { $regex: new RegExp(`^${accountName}$`, 'i') },
-            organizationId
-        });
+        let accountId = null;
 
-        let account;
-
-        if (existingAccount) {
-            account = existingAccount;
-        } else {
-            // 3. Create new Account
-            account = await AccountModel.create({
-                accountName,
+        if (!createNewDeal) {
+            // 2. Check if Account already exists (case-insensitive)
+            const existingAccount = await AccountModel.findOne({
+                accountName: { $regex: new RegExp(`^${accountName}$`, "i") },
                 organizationId,
-                createdBy: userId
             });
+
+            let account;
+
+            if (existingAccount) {
+                account = existingAccount;
+            } else {
+                // 3. Create new Account
+                account = await AccountModel.create({
+                    accountName,
+                    organizationId,
+                    createdBy: userId,
+                });
+            }
+
+            accountId = account._id;
         }
 
-        // 4. Create Deal linked with Account and Lead
+        // 4. Create Deal (with or without Account)
         const newDeal = await Deal.create({
             dealName,
             amount,
@@ -463,9 +472,9 @@ export const convertLeadToDeal = async (req, res) => {
             campaignSource,
             contactRole,
             leadId,
-            accountName: account._id,
+            accountName: accountId,
             organizationId,
-            createdBy: userId
+            createdBy: userId,
         });
 
         // 5. Update Lead
@@ -473,25 +482,24 @@ export const convertLeadToDeal = async (req, res) => {
         lead.closeDate = closingDate;
         await lead.save();
 
-        // 6. Push to Timeline
+        // 6. Timeline
         await LeadTimeline.create({
             leadId,
             action: "Converted to Deal",
-            createdBy: fullName || "System"
+            createdBy: fullName || "System",
         });
 
         return res.status(201).json({
             status: true,
             message: "Lead converted to deal successfully",
-            data: newDeal
+            data: newDeal,
         });
-
     } catch (err) {
         console.error("Convert Lead Error:", err);
         return res.status(500).json({
             status: false,
             message: "Server Error",
-            error: err.message
+            error: err.message,
         });
     }
 };
@@ -638,7 +646,7 @@ export const getDeal = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Lead fetched successfully",
+            message: "Deal fetched successfully",
             data: leadPlain,
         });
 
@@ -701,9 +709,7 @@ export const editDeal = async (req, res) => {
     }
 }
 
-
 // TimeLine Notes
-
 export const createTimeLineNote = async (req, res) => {
     try {
         const { timelineId } = req.params;
@@ -942,13 +948,38 @@ export const getAllAccounts = async (req, res) => {
     try {
         const { organizationId } = req.user;
 
-        // Fetch accounts by organizationId and populate parentAccount
+        // Fetch accounts and populate parent account
         const accounts = await AccountModel.find({ organizationId }).populate('parentAccount');
+
+        // Enrich accounts with lead owner details
+        const enrichedLeads = await Promise.all(
+            accounts.map(async (lead) => {
+                const leadObj = lead.toObject(); // Convert Mongoose doc to plain JS object
+                const accountOwner = lead?.accountOwner;
+
+                let owner = [[]];
+                if (accountOwner) {
+                    owner = await db.execute(
+                        "SELECT id, fullName, email FROM users WHERE id = ?",
+                        [accountOwner]
+                    );
+                }
+
+                // Optional: Fetch lead creator if needed
+                // const creator = await db.execute(...);
+
+                return {
+                    ...leadObj,
+                    accountOwner: owner[0][0] || null, // Fallback to null if not found
+                    // LeadCreator: creator[0][0] || null,
+                };
+            })
+        );
 
         return res.status(200).json({
             success: true,
             message: "Accounts fetched successfully",
-            data: accounts,
+            data: enrichedLeads,
         });
     } catch (error) {
         console.error("Error fetching accounts:", error.message);
@@ -959,6 +990,7 @@ export const getAllAccounts = async (req, res) => {
         });
     }
 };
+
 
 // Get Single Account
 export const getAccount = async (req, res) => {

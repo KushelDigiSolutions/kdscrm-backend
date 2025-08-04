@@ -691,7 +691,7 @@ export const createUser = async (req, res) => {
   </div>
 `;
 
-        await SendEmail(organizationId,email, "Login Details", message, html);
+        await SendEmail(organizationId, email, "Login Details", message, html);
 
         return res.status(201).json({
             status: true,
@@ -900,7 +900,7 @@ export const createAdmin = async (req, res) => {
             Regards,<br/>Kushel Digi Solutions
         </div>`;
 
-        await SendEmail(organizationId,email, "Your Admin Account is Ready", html, html); // Uncomment if email sending configured
+        await SendEmail(organizationId, email, "Your Admin Account is Ready", html, html); // Uncomment if email sending configured
 
         return res.status(201).json({
             status: true,
@@ -920,7 +920,6 @@ export const UpdateUser = async (req, res) => {
         const { id } = req.params;
         const {
             fullName,
-            password,
             department,
             gmail,
             reportingManager,
@@ -970,6 +969,7 @@ export const UpdateUser = async (req, res) => {
             employeeCode,
             leaveNumber
         } = req.body;
+        console.log(req.body);
 
         if (!id) {
             return res.status(400).json({ status: false, message: "User ID is required" });
@@ -982,11 +982,11 @@ export const UpdateUser = async (req, res) => {
         }
 
         // Hash password if provided
-        let hashedPassword = null;
-        if (password) {
-            const saltRounds = 10;
-            hashedPassword = await bcrypt.hash(password, saltRounds);
-        }
+        // let hashedPassword = null;
+        // if (password) {
+        //     const saltRounds = 10;
+        //     hashedPassword = await bcrypt.hash(password, saltRounds);
+        // }
         console.log(profileImage)
 
         // Prepare update data
@@ -1040,16 +1040,17 @@ export const UpdateUser = async (req, res) => {
             employeeCode,
             leaveNumber
         });
+        console.log(data);
         console.log(data.profileImage, " at 1043")
         // Set role from department
-        if (department) {
-            data.role = department === "Hr" ? "HR" : department === "Manager" ? "MANAGER" : "EMPLOYEE";
-        }
+        // if (department) {
+        //     data.role = department === "Hr" ? "HR" : department === "Manager" ? "MANAGER" : "EMPLOYEE";
+        // }
 
-        // Set hashed password if available
-        if (hashedPassword) {
-            data.password = hashedPassword;
-        }
+        // // Set hashed password if available
+        // if (hashedPassword) {
+        //     data.password = hashedPassword;
+        // }
 
         // Set permission role if provided
         if (PermissionRole && PermissionRole === "Select Role") {
@@ -1154,7 +1155,8 @@ export const GetSingleUser = async (req, res) => {
         if (users.length === 0) {
             return res.status(404).json({ status: false, message: "User not found" });
         }
-        const user = users[0];
+        const { password, ...user } = users[0];
+        // const user = users[0];
 
         // Step 2: Fetch permission role if available
         let permissionRole = null;
