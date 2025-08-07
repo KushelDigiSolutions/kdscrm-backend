@@ -1,10 +1,10 @@
 import { Router } from "express"
 import {
-    createLead, getLead, getAllLeads, editLead, getLeadTimeline, convertLeadToDeal, GetAllDeals, getDeal, createExternalLead, updateLeadStatus, createTimeLineNote,
+    createLead, getLead, getAllLeads, editLead, getLeadTimeline, convertLeadToDeal, GetAllDeals, getDeal, createExternalLead, updateLeadStatus, createTimeLineNote, handleInstalledMetaWebhook,
     getTimelineNotes,
     updateTimelineNote,
     deleteTimelineNote, editDeal,
-    createAccount, updateAccount, getAllAccounts, getAccount, accountToDeal, deleteAccount
+    createAccount, updateAccount, getAllAccounts, getAccount, accountToDeal, deleteAccount, handleGoogleLeadWebhook, googleLeadWebhook
 } from "../controller/leadManagement.js"
 import isAuthenticated from "../middleware/auth.js"
 
@@ -35,5 +35,19 @@ router.put("/updateAccount/:id", updateAccount);
 router.get("/getAllAccounts", isAuthenticated, getAllAccounts);
 router.get("/getAccount/:id", isAuthenticated, getAccount);
 router.delete("/deleteAccount/:id", deleteAccount)
+
+
+
+// Mount as: /meta/installed-webhook/:orgId
+router.get("/meta/installed-webhook/:orgId", handleInstalledMetaWebhook);
+router.post("/meta/installed-webhook/:orgId", handleInstalledMetaWebhook);
+
+
+router.post("/google/installed-webhook/:orgId", handleGoogleLeadWebhook);
+
+
+router.post('/google-leads/webhook', googleLeadWebhook);
+
+
 
 export default router;

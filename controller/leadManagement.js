@@ -1026,3 +1026,458 @@ export const deleteAccount = async (req, res) => {
         });
     }
 };
+
+
+
+// controllers/metaWebhookController.js
+
+import axios from "axios";
+import InstalledProducts from "../models/installedpro.js";
+
+
+const FB_API_VERSION = process.env.FB_API_VERSION || "v17.0";
+
+/**
+ * Handle GET & POST webhook using InstalledProducts config stored for org
+ * Route: /meta/installed-webhook/:orgId
+ */
+export const handleInstalledMetaWebhook = async (req, res) => {
+    const { orgId } = req.params;
+
+    const [leadOwner] = await db.execute(
+        "SELECT id FROM users WHERE organizationId = ? AND Role = 'ADMIN' LIMIT 1",
+        [orgId]
+    );
+    // find the installed product config for this organization and product name
+    // you can change filter if you store multiple integrations per org
+    const installed = await InstalledProducts.findOne({
+        organizationId: orgId,
+        name: "Facebook Lead Integration"
+    });
+
+    if (!installed) {
+        // If no integration installed for this org, reject verification and ignore posts
+        if (req.method === "GET") return res.sendStatus(404);
+        if (req.method === "POST") return res.status(200).send("No integration for org");
+    }
+
+    const config = installed.config || {};
+    const storedVerifyToken = config.verifyToken;
+    const storedAccessToken = config.accessToken;
+    const storedPageId = config.pageId; // optional if you auto-fetch pageId elsewhere
+
+    // ---------- GET (verification) ----------
+    if (req.method === "GET") {
+        try {
+            const mode = req.query["hub.mode"];
+            const token = req.query["hub.verify_token"];
+            const challenge = req.query["hub.challenge"];
+
+            if (mode === "subscribe" && token && token === storedVerifyToken) {
+                return res.status(200).send(challenge);
+            } else {
+                console.warn("Webhook verify failed for org", orgId);
+                return res.sendStatus(403);
+            }
+        } catch (err) {
+            console.error("Webhook GET error:", err);
+            return res.sendStatus(500);
+        }
+    }
+
+    // ---------- POST (events) ----------
+    if (req.method === "POST") {
+        try {
+            const body = req.body;
+            const entries = body.entry || [];
+
+            for (const entry of entries) {
+                // Facebook sometimes sends page id as entry.id or change.value.page_id
+                const pageIdFromEntry = entry.id || entry.changes?.[0]?.value?.page_id;
+
+                // If you want to check pageId matches installed config (optional)
+                if (storedPageId && pageIdFromEntry && storedPageId !== pageIdFromEntry) {
+                    console.warn(`PageId mismatch for org ${orgId}: entry ${pageIdFromEntry} != stored ${storedPageId}`);
+                    // continue to next entry (or continue processing anyway if you support multiple pages)
+                }
+
+                for (const change of entry.changes || []) {
+                    if (change.field !== "leadgen") continue;
+
+                    const leadgenId = change.value?.leadgen_id;
+                    if (!leadgenId) {
+                        console.warn("No leadgen_id in change");
+                        continue;
+                    }
+
+                    // --- fetch lead details from Graph API using stored access token ---
+                    try {
+                        const url = `https://graph.facebook.com/${FB_API_VERSION}/${leadgenId}`;
+                        const fbRes = await axios.get(url, {
+                            params: {
+                                access_token: storedAccessToken,
+                                fields: "id,ad_id,form_id,created_time,field_data"
+                            }
+                        });
+
+                        const leadData = fbRes.data;
+                        // Map FB data to your Lead model fields
+                        const mapped = mapFbLeadToLeadObj(leadData);
+
+                        // add org and meta info
+                        mapped.organizationId = mongoose.Types.ObjectId(orgId); // ensure object id type
+                        mapped.LeadSource = mapped.LeadSource || "Meta:LeadAds";
+                        mapped.metaLeadId = leadData.id;
+                        // you can set LeadOwner default from installed.config if provided
+
+                        // DEDUPE: check if metaLeadId already exists
+                        const already = await Lead.findOne({ metaLeadId: mapped.metaLeadId });
+                        if (already) {
+                            console.log("Duplicate meta lead, skipping:", mapped.metaLeadId);
+                            continue;
+                        }
+
+                        // Create lead (matches your createLead fields)
+                        const leadDetail = await Lead.create({
+                            LeadOwner: leadOwner[0]?.id,
+                            LeadCreator: mapped.LeadCreator,
+                            image: mapped.image,
+                            Company: mapped.Company,
+                            FirstName: mapped.FirstName,
+                            LastName: mapped.LastName,
+                            Title: mapped.Title,
+                            Email: mapped.Email,
+                            Phone: mapped.Phone,
+                            Fax: mapped.Fax,
+                            Mobile: mapped.Mobile,
+                            Website: mapped.Website,
+                            LeadSource: mapped.LeadSource,
+                            NoOfEmployee: mapped.NoOfEmployee,
+                            Industry: mapped.Industry,
+                            LeadStatus: mapped.LeadStatus,
+                            AnnualRevenue: mapped.AnnualRevenue,
+                            Rating: mapped.Rating,
+                            EmailOptOut: mapped.EmailOptOut,
+                            SkypeID: mapped.SkypeID,
+                            SecondaryEmail: mapped.SecondaryEmail,
+                            Twitter: mapped.Twitter,
+                            Street: mapped.Street,
+                            City: mapped.City,
+                            State: mapped.State,
+                            ZipCode: mapped.ZipCode,
+                            Country: mapped.Country,
+                            LinkedIn: mapped.LinkedIn,
+                            DescriptionInfo: mapped.DescriptionInfo,
+                            date: mapped.date || new Date(),
+                            metaLeadId: mapped.metaLeadId,
+                            organizationId: mapped.organizationId
+                        });
+
+                        await LeadTimeline.create({
+                            leadId: leadDetail._id,
+                            action: "Lead Created (Meta)",
+                            createdBy: "MetaWebhook"
+                        });
+
+                        console.log("Created lead for org", orgId, "leadId:", leadDetail._id);
+                    } catch (err) {
+                        console.error("Error fetching lead from FB or creating lead:", err?.response?.data || err.message);
+                        // continue with other changes/entries
+                    }
+                }
+            }
+
+            // respond 200 to FB quickly
+            return res.status(200).send("EVENT_RECEIVED");
+        } catch (err) {
+            console.error("Webhook POST error:", err);
+            return res.sendStatus(500);
+        }
+    }
+
+    // Method not allowed
+    return res.sendStatus(405);
+};
+
+
+/** Helper: map FB lead response to your Lead schema keys */
+function mapFbLeadToLeadObj(fbLeadResponse) {
+    const obj = {};
+    const fields = fbLeadResponse.field_data || [];
+
+    for (const f of fields) {
+        const name = (f.name || "").toLowerCase();
+        const val = Array.isArray(f.values) ? f.values[0] : f.values || f.value;
+
+        // common mappings — extend as needed
+        if (name.includes("first")) obj.FirstName = val;
+        else if (name.includes("last")) obj.LastName = val;
+        else if (name.includes("email")) obj.Email = val;
+        else if (name.includes("phone") || name.includes("mobile")) obj.Phone = val;
+        else if (name.includes("company") || name.includes("organization")) obj.Company = val;
+        else if (name.includes("title")) obj.Title = val;
+        else obj.DescriptionInfo = (obj.DescriptionInfo ? obj.DescriptionInfo + "\n" : "") + `${f.name}: ${val}`;
+    }
+
+    // fallback fields
+    if (fbLeadResponse.created_time) obj.date = fbLeadResponse.created_time;
+    if (fbLeadResponse.ad_id) obj.DescriptionInfo = (obj.DescriptionInfo ? obj.DescriptionInfo + "\n" : "") + `ad_id: ${fbLeadResponse.ad_id}`;
+
+    return obj;
+}
+
+
+
+/**
+ * Google Lead webhook handler (POST /lead/google/installed-webhook/:orgId?key=...)
+ */
+export const handleGoogleLeadWebhook = async (req, res) => {
+    const { orgId } = req.params;
+
+    try {
+        const installed = await InstalledProducts.findOne({
+            organizationId: orgId,
+            name: "Google Lead Integration",
+        });
+
+        if (!installed) {
+            console.warn("No Google integration for org:", orgId);
+            return res.status(404).send("Integration not found");
+        }
+
+        const [leadOwner] = await db.execute(
+            "SELECT id FROM users WHERE organizationId = ? AND Role = 'ADMIN' LIMIT 1",
+            [orgId]
+        );
+
+        const config = installed.config || {};
+        const storedKey = config.verifyKey || config.verifyToken || "";
+
+        // Verify incoming key (query param ?key=...)
+        const incomingKey = req.query?.key || req.get("x-google-key") || req.body?.key;
+        if (!incomingKey || incomingKey !== storedKey) {
+            console.warn("Invalid Google webhook key for org:", orgId);
+            return res.status(403).send("Invalid key");
+        }
+
+        const payload = req.body;
+        if (!payload) return res.status(400).send("No payload");
+
+        // normalize user_column_data to a map for easy lookup
+        const userColumns = payload.user_column_data || payload.userData || [];
+        const data = {};
+        for (const c of userColumns) {
+            const name = (c.column_name || c.name || "").toString().trim().toLowerCase();
+            const val = c.string_value || c.value || "";
+            if (name) data[name] = val;
+        }
+
+        // Helper to get value by many possible column names
+        const get = (...keys) => {
+            for (let k of keys) {
+                k = k.toString().toLowerCase();
+                if (data[k]) return data[k];
+            }
+            return "";
+        };
+
+        // Map to your Lead fields
+        const mapped = {
+            LeadOwner: leadOwner[0]?.id,
+            LeadCreator: null,
+            image: null,
+            Company: get("company", "company_name", "organization"),
+            FirstName: get("first_name", "firstname", "given_name") || (() => {
+                const full = get("full_name", "name");
+                if (full) return full.split(" ")[0];
+                return "";
+            })(),
+            LastName: get("last_name", "lastname") || (() => {
+                const full = get("full_name", "name");
+                if (full) {
+                    const parts = full.split(" ");
+                    parts.shift();
+                    return parts.join(" ");
+                }
+                return "";
+            })(),
+            Title: get("job_title", "title"),
+            Email: get("email", "email_address"),
+            Phone: get("phone_number", "phone", "mobile"),
+            Fax: get("fax"),
+            Mobile: get("mobile", "phone_number"),
+            Website: get("website", "url"),
+            LeadSource: "Google:LeadForm",
+            NoOfEmployee: get("employee_count", "no_of_employees"),
+            Industry: get("industry"),
+            LeadStatus: get("lead_status") || null,
+            AnnualRevenue: get("annual_revenue", "revenue"),
+            Rating: get("rating"),
+            EmailOptOut: false,
+            SkypeID: get("skype"),
+            SecondaryEmail: get("secondary_email"),
+            Twitter: get("twitter"),
+            Street: get("street", "address_line1"),
+            City: get("city"),
+            State: get("state", "region"),
+            ZipCode: get("postal_code", "zip", "zip_code"),
+            Country: get("country"),
+            LinkedIn: get("linkedin"),
+            DescriptionInfo: "",
+            date: payload.event_time || payload.lead_submit_time || new Date().toISOString(),
+        };
+
+        // Add any leftover unknown fields into DescriptionInfo
+        for (const k of Object.keys(data)) {
+            // skip ones we've already mapped
+            const mappedKeys = [
+                "first_name", "firstname", "given_name", "last_name", "lastname", "full_name", "name",
+                "email", "email_address", "phone_number", "phone", "mobile",
+                "company", "company_name", "organization", "job_title", "title",
+                "website", "url", "employee_count", "no_of_employees", "industry",
+                "annual_revenue", "revenue", "rating", "skype", "secondary_email", "twitter",
+                "street", "address_line1", "city", "state", "region", "postal_code", "zip", "zip_code", "country", "linkedin", "description"
+            ];
+            if (!mappedKeys.includes(k)) {
+                mapped.DescriptionInfo += `${k}: ${data[k]}\n`;
+            }
+        }
+
+        // metaLeadId
+        const metaLeadId = payload.lead_id || payload.leadId || payload.id;
+        if (metaLeadId) mapped.metaLeadId = metaLeadId;
+
+        // organizationId as ObjectId
+        try {
+            mapped.organizationId = mongoose.Types.ObjectId(orgId);
+        } catch (e) {
+            // If orgId is not a valid ObjectId, just set raw string (depends on your schema)
+            mapped.organizationId = orgId;
+        }
+
+        // Dedupe by metaLeadId
+        if (mapped.metaLeadId) {
+            const exists = await Lead.findOne({ metaLeadId: mapped.metaLeadId });
+            if (exists) {
+                console.log("Duplicate Google lead, skipping:", mapped.metaLeadId);
+                return res.status(200).send("Duplicate");
+            }
+        }
+
+        // Optional fallback dedupe by email + org
+        if (!mapped.metaLeadId && mapped.Email) {
+            const existsByEmail = await Lead.findOne({ Email: mapped.Email, organizationId: mapped.organizationId });
+            if (existsByEmail) {
+                console.log("Lead exists by email, skipping:", mapped.Email);
+                return res.status(200).send("Exists");
+            }
+        }
+
+        // Create lead using same fields as your createLead controller expects
+        const leadDetail = await Lead.create({
+            LeadOwner: mapped.LeadOwner,
+            LeadCreator: mapped.LeadCreator,
+            image: mapped.image,
+            Company: mapped.Company,
+            FirstName: mapped.FirstName,
+            LastName: mapped.LastName,
+            Title: mapped.Title,
+            Email: mapped.Email,
+            Phone: mapped.Phone,
+            Fax: mapped.Fax,
+            Mobile: mapped.Mobile,
+            Website: mapped.Website,
+            LeadSource: mapped.LeadSource,
+            NoOfEmployee: mapped.NoOfEmployee,
+            Industry: mapped.Industry,
+            LeadStatus: mapped.LeadStatus,
+            AnnualRevenue: mapped.AnnualRevenue,
+            Rating: mapped.Rating,
+            EmailOptOut: mapped.EmailOptOut,
+            SkypeID: mapped.SkypeID,
+            SecondaryEmail: mapped.SecondaryEmail,
+            Twitter: mapped.Twitter,
+            Street: mapped.Street,
+            City: mapped.City,
+            State: mapped.State,
+            ZipCode: mapped.ZipCode,
+            Country: mapped.Country,
+            LinkedIn: mapped.LinkedIn,
+            DescriptionInfo: mapped.DescriptionInfo,
+            date: mapped.date,
+            metaLeadId: mapped.metaLeadId,
+            organizationId: mapped.organizationId
+        });
+
+        // Timeline entry
+        await LeadTimeline.create({
+            leadId: leadDetail._id,
+            action: "Lead Created (Google)",
+            createdBy: "GoogleWebhook"
+        });
+
+        console.log("Google lead created:", leadDetail._id);
+        return res.status(200).send("OK");
+    } catch (err) {
+        console.error("Google webhook error:", err);
+        return res.status(500).send("Server error");
+    }
+};
+
+
+
+// controllers/googleLead.controller.js
+
+export const googleLeadWebhook = async (req, res) => {
+    try {
+        // Webhook Verification (if required)
+        if (req.method === "GET") {
+            // For initial verification
+            return res.status(200).send(req.query.challenge);
+        }
+
+        const GOOGLE_SECRET = process.env.GOOGLE_LEAD_SECRET;
+
+        // Optional: Validate using secret key if you're using HMAC
+        const receivedKey = req.headers['x-goog-auth-token'];
+        if (receivedKey !== GOOGLE_SECRET) {
+            return res.status(403).json({ message: "Unauthorized webhook" });
+        }
+
+        const leadData = req.body;
+
+        // ✅ Map Google Lead fields to your CRM schema
+        const mappedLead = {
+            LeadOwner: "Google Ads", // default or mapped owner
+            LeadCreator: "System",
+            Company: leadData.companyName || "Unknown Company",
+            FirstName: leadData.firstName || "",
+            LastName: leadData.lastName || "",
+            Email: leadData.email || "",
+            Phone: leadData.phoneNumber || "",
+            LeadSource: "Google Ads",
+            LeadStatus: "New",
+            organizationId: getOrganizationIdFromGoogleLead(leadData),
+            // Add other fields as needed
+        };
+
+        // Injecting mapped data into req.body and req.user mock
+        req.body = mappedLead;
+        req.user = { organizationId: mappedLead.organizationId, fullName: "System" };
+
+        // Reuse existing logic
+        return await createLead(req, res);
+    } catch (err) {
+        console.error("Error receiving Google lead:", err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+// 🎯 Custom logic to map Google Lead to organizationId
+function getOrganizationIdFromGoogleLead(lead) {
+    const campaignMap = {
+        'campaignId1': 'orgId1',
+        'campaignId2': 'orgId2',
+    };
+    return campaignMap[lead.campaignId] || 'defaultOrgId';
+}
