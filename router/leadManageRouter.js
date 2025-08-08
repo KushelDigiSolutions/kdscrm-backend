@@ -4,7 +4,12 @@ import {
     getTimelineNotes,
     updateTimelineNote,
     deleteTimelineNote, editDeal,
-    createAccount, updateAccount, getAllAccounts, getAccount, accountToDeal, deleteAccount, handleGoogleLeadWebhook, googleLeadWebhook
+    createAccount, updateAccount, getAllAccounts, getAccount, accountToDeal, deleteAccount, handleGoogleLeadWebhook, googleLeadWebhook,
+    createLeadAttachment,
+    getAttachmentsByLeadId,
+    getAttachmentById,
+    updateAttachment,
+    deleteAttachment,
 } from "../controller/leadManagement.js"
 import isAuthenticated from "../middleware/auth.js"
 
@@ -48,6 +53,22 @@ router.post("/google/installed-webhook/:orgId", handleGoogleLeadWebhook);
 
 router.post('/google-leads/webhook', googleLeadWebhook);
 
+
+
+
+router.post("/createLeadAttachment", createLeadAttachment);
+
+// Get all attachments of a lead
+router.get("/getAttachmentsByLeadId/:leadId", getAttachmentsByLeadId);
+
+// Get one attachment
+router.get("/getAttachmentById/:id", getAttachmentById);
+
+// Update
+router.put("/updateAttachment/:id", updateAttachment);
+
+// Delete
+router.delete("/deleteAttachment/:id", deleteAttachment);
 
 
 export default router;

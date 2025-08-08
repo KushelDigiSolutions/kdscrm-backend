@@ -34,7 +34,7 @@ const generateRefreshToken = async (userId) => {
 export const CreateClient = async (req, res) => {
   try {
     const { organizationId } = req.user;
-    const { Name, Email, Password, City, State, ZipCode, PhoneNumber, Country, Address } = req.body;
+    const { Name, Email, Password, City, State, ZipCode, PhoneNumber, Country, Address, Company, Currency, Language, countryCode } = req.body;
 
     // Validate required fields
     if (!Name || !Email || !Password) {
@@ -82,6 +82,10 @@ export const CreateClient = async (req, res) => {
       Country,
       Address,
       organizationId,
+      Company,
+      Currency,
+      Language,
+      countryCode
     });
 
     const emailTemplate = `
@@ -133,13 +137,13 @@ export const CreateClient = async (req, res) => {
 
 export const EditClient = async (req, res) => {
   try {
-    const { Name, Email, City, State, ZipCode, PhoneNumber, Country, Address, Password } = req.body;
+    const { Name, Email, City, State, ZipCode, PhoneNumber, Country, Address, Password, Company, Currency, Language, countryCode } = req.body;
 
     const { clientId } = req.params;
     const plainTextPassword = Password;
     const hashedPassword = await bcrypt.hash(Password, 10);
 
-    const clientDetail = await Clients.findByIdAndUpdate(clientId, { Name, Email, City, State, ZipCode, PhoneNumber, Country, Address, Password: hashedPassword });
+    const clientDetail = await Clients.findByIdAndUpdate(clientId, { Name, Email, City, State, ZipCode, PhoneNumber, Country, Address, Password: hashedPassword, Company, Currency, Language, countryCode });
 
     return res.status(200).json({
       status: true,
