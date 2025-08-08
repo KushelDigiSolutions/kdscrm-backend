@@ -38,6 +38,15 @@ const mySchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    Company: {
+      type: String,
+    }, Currency: {
+      type: String,
+    }, Language: {
+      type: String,
+    }, countryCode: {
+      type: String,
+    },
     organizationId: String
   },
   { timestamps: true }

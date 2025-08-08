@@ -3,6 +3,8 @@ import LeadTimeline from "../models/LeadTimeline.js";
 import db from "../db/sql_conn.js"
 import Deal from "../models/Deal.js"
 import AccountModel from "../models/Account.js";
+import { uploadToCloudinary } from "../utils/cloudinary.js";
+import LeadAttachement from "../models/Lead/LeadAttachement.js";
 
 
 /**
@@ -1481,3 +1483,97 @@ function getOrganizationIdFromGoogleLead(lead) {
     };
     return campaignMap[lead.campaignId] || 'defaultOrgId';
 }
+
+
+
+// import LeadAttachement from "./path-to-model";
+// import { uploadToCloudinary } from "./path-to-cloudinary-utils"; // your existing cloudinary upload function
+
+// CREATE: Upload file to Cloudinary, then create LeadAttachment doc
+export const createLeadAttachment = async (req, res) => {
+    try {
+        const { leadId, name } = req.body;
+        const { file } = req.files; // assuming form-data with file field named 'file'
+
+        if (!file) return res.status(400).json({ message: "File is required" });
+        if (!leadId) return res.status(400).json({ message: "leadId is required" });
+
+        // Upload file to Cloudinary
+        const uploadResult = await uploadToCloudinary(file.tempFilePath);
+
+        // Create document with Cloudinary URL
+        const newAttachment = await LeadAttachement.create({
+            leadId,
+            name,
+            file: uploadResult.secure_url,
+        });
+
+        return res.status(201).json({ status: true, data: newAttachment });
+    } catch (error) {
+        console.error("Error creating LeadAttachment:", error);
+        return res.status(500).json({ status: false, message: "Server Error" });
+    }
+};
+
+// READ ALL attachments for a Lead
+export const getAttachmentsByLeadId = async (req, res) => {
+    try {
+        const { leadId } = req.params;
+        const attachments = await LeadAttachement.find({ leadId });
+        return res.status(200).json({ status: true, data: attachments });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ status: false, message: "Server Error" });
+    }
+};
+
+// READ ONE attachment by id
+export const getAttachmentById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const attachment = await LeadAttachement.findById(id);
+        if (!attachment) return res.status(404).json({ message: "Not found" });
+        return res.status(200).json({ status: true, data: attachment });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ status: false, message: "Server Error" });
+    }
+};
+
+// UPDATE attachment (optionally upload new file)
+export const updateAttachment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name } = req.body;
+        const updateData = {};
+
+        if (name) updateData.name = name;
+
+        // if new file uploaded, update file on Cloudinary
+        if (req.files?.file) {
+            const uploadResult = await uploadToCloudinary(req.files.file.tempFilePath);
+            updateData.file = uploadResult.secure_url;
+        }
+
+        const updated = await LeadAttachement.findByIdAndUpdate(id, updateData, { new: true });
+        if (!updated) return res.status(404).json({ message: "Not found" });
+
+        return res.status(200).json({ status: true, data: updated });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ status: false, message: "Server Error" });
+    }
+};
+
+// DELETE attachment by id
+export const deleteAttachment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deleted = await LeadAttachement.findByIdAndDelete(id);
+        if (!deleted) return res.status(404).json({ message: "Not found" });
+        return res.status(200).json({ status: true, message: "Deleted successfully" });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ status: false, message: "Server Error" });
+    }
+};
