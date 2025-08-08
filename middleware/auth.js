@@ -6,7 +6,6 @@ import db from "../db/sql_conn.js";
 const isAuthenticated = asyncHandler(async (req, res, next) => {
   try {
     req.user = null;
-
     const token = req.headers.jwt;
     if (!token) {
       throw new ApiError(401, "UnAuthorized Request");

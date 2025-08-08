@@ -138,7 +138,6 @@ export const CreateClient = async (req, res) => {
 export const EditClient = async (req, res) => {
   try {
     const { Name, Email, City, State, ZipCode, PhoneNumber, Country, Address, Password, Company, Currency, Language, countryCode } = req.body;
-
     const { clientId } = req.params;
     const plainTextPassword = Password;
     const hashedPassword = await bcrypt.hash(Password, 10);

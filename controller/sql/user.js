@@ -1293,6 +1293,8 @@ export const userLogin = async (req, res) => {
         if (users.length === 0) {
 
             const client = await Clients.findOne({ Email: email });
+            const [myOrg] = await db.execute('SELECT name, imageUrl, imageUrl2, id, email FROM organizations WHERE id = ?', [client.organizationId]);
+            const organization = myOrg[0];
             // return next(new ApiError(404, "User not found"));
             if (!client) {
                 return res.status(404).json({
@@ -1316,6 +1318,7 @@ export const userLogin = async (req, res) => {
                 message: "Login successful",
                 user: client,
                 token,
+                organization
             });
 
         }
