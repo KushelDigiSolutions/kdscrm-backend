@@ -9,7 +9,7 @@ import {
 
 } from "../controller/TaskController.js";
 
-import { CreateClient, EditClient, clientLogin, getProjectTask, getMyProjectTask, getUpcomingBirthdays, getAllClient, getTaskByUserProject, DisableClient, CreateProject, EditProject, changeTaskStatus, getAllProject, delteTaskId, DeleteProjects, getProjectByUser, CreateProjectTask, EditProjectTask, GetAllTask, GetTaskByUser, getTodayBirthday, FetchAllTask, getClient } from "../controller/Clients.js";
+import { CreateClient, EditClient, clientLogin, getProjectTask, getMyProjectTask, getUpcomingBirthdays, getAllClient, getTaskByUserProject, DisableClient, DeleteClient, CreateProject, EditProject, changeTaskStatus, getAllProject, delteTaskId, DeleteProjects, getProjectByUser, CreateProjectTask, EditProjectTask, GetAllTask, GetTaskByUser, getTodayBirthday, FetchAllTask, getClient } from "../controller/Clients.js";
 
 
 import { ProjectTimerCreate } from "../controller/ProjectTimer.js"
@@ -32,11 +32,12 @@ router.delete("/deleteProjectTaskapi/:id", delteTaskId);
 router.post("/createClient", isAuthenticated, CreateClient);
 router.post("/clientLogin", clientLogin);
 
-router.post("/editClient/:clientId", EditClient);
+router.post("/editClient/:clientId", isAuthenticated, EditClient);
 router.get("/getAllClient", isAuthenticated, getAllClient);
 router.get("/getClient/:id", getClient);
 
-router.post("/disableClient/:clientId", DisableClient);
+router.post("/disableClient/:clientId", isAuthenticated, DisableClient);
+router.delete("/deleteClient/:clientId", isAuthenticated, DeleteClient);
 
 // for projeccts 
 
@@ -48,8 +49,8 @@ router.get("/getProjectByUser/:userId", getProjectByUser);
 
 
 // for project task 
-router.post("/createProjectTask/:projectId",isAuthenticated, CreateProjectTask);
-router.post("/editProjectTask/:projectId/:taskId",isAuthenticated, EditProjectTask);
+router.post("/createProjectTask/:projectId", isAuthenticated, CreateProjectTask);
+router.post("/editProjectTask/:projectId/:taskId", isAuthenticated, EditProjectTask);
 router.post("/changeTaskStatus/:taskId", changeTaskStatus);
 router.get("/getAllTask", GetAllTask);
 router.get("/getTaskByUser/:userId", GetTaskByUser);

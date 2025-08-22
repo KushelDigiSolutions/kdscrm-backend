@@ -13,12 +13,18 @@ const startOfWeek = (date) => {
 export const postActivity = async (req, res) => {
   try {
     const { organizationId, id: userId } = req.user;
-    const { date, checkInTime, breaks, checkOutTime, task, status } = req.body;
+    const { date, checkInTime, checkOutTime, task, status } = req.body;
+    const breaks = false;
 
-    // Check and delete in a single step
+    // Check and delete any existing activity
     const existingActivity = await ActivityTracker.findOneAndDelete({ userId });
 
     if (existingActivity) {
+      const [rows] = await db.execute("SELECT isBreakIn FROM users WHERE id = ?", [userId]);
+      if (rows.length === 0) {
+        return res.status(404).json({ status: false, message: "User not found in SQL DB" });
+      }
+      await db.execute("UPDATE users SET isBreakIn = ? WHERE id = ?", [0, userId]);
       return res.status(200).json({
         success: true,
         message: "Previous activity deleted successfully",
@@ -26,7 +32,6 @@ export const postActivity = async (req, res) => {
       });
     }
 
-    // Create new activity directly
     const newActivity = await ActivityTracker.create({
       userId,
       organizationId,
@@ -53,6 +58,7 @@ export const postActivity = async (req, res) => {
     });
   }
 };
+
 
 export const getAllClocks = async (req, res) => {
   try {

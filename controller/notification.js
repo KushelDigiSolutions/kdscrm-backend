@@ -174,6 +174,20 @@ export const getNotification = async (req, res) => {
     }
 };
 
+export const getClientNotification = async (req, res) => {
+    try {
+        const { userId } = req.params;
+    } catch (error) {
+        console.error('Error in clientNotification:', error);
+        return res.status(500).json({
+            status: false,
+            message: 'Internal Server Error',
+        });
+    }
+
+}
+
+
 export const getNotificationHR = async (req, res) => {
     try {
         const { organizationId } = req.user;
@@ -267,8 +281,7 @@ export const deleteNotification = async (req, res) => {
 export const markedNotification = async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.user.id;
-        console.log(id, userId)
+        const userId = req.user.id || req.user._id;
 
         if (!userId || !id) {
             return res.status(400).json({

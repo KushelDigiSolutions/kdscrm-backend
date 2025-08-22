@@ -11,6 +11,7 @@ import { asyncHandler } from "../utils/AsyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { SendEmail } from "../utils/SendEmail.js";
+import Timeline from "../models/Tasks/ProjectTimeLine.js";
 import db from "../db/sql_conn.js"
 
 const generateRefreshToken = async (userId) => {
@@ -33,10 +34,25 @@ const generateRefreshToken = async (userId) => {
 
 export const CreateClient = async (req, res) => {
   try {
-    const { organizationId } = req.user;
-    const { Name, Email, Password, City, State, ZipCode, PhoneNumber, Country, Address, Company, Currency, Language, countryCode } = req.body;
+    const { organizationId, id: performedBy } = req.user;
+    const {
+      Name,
+      Email,
+      Password,
+      City,
+      State,
+      ZipCode,
+      PhoneNumber,
+      Country,
+      Address,
+      Company,
+      Currency,
+      Language,
+      countryCode,
+      Website,
+    } = req.body;
 
-    // Validate required fields
+    // Validate required fields first
     if (!Name || !Email || !Password) {
       return res.status(400).json({
         status: false,
@@ -44,11 +60,17 @@ export const CreateClient = async (req, res) => {
       });
     }
 
-    // Check if email already exists in MySQL user table
-    const [userRows] = await db.execute(
-      'SELECT 1 FROM users WHERE email = ? AND organizationId = ?',
-      [Email, organizationId]
-    );
+    // Run MySQL + Mongo checks in parallel
+    const [userRowsPromise, clientPromise] = await Promise.all([
+      db.execute(
+        "SELECT 1 FROM users WHERE email = ? AND organizationId = ? LIMIT 1",
+        [Email, organizationId]
+      ),
+      Clients.findOne({ Email }).select("_id"), // sirf id laani hai
+    ]);
+
+    const [userRows] = userRowsPromise;
+    const existingClient = clientPromise;
 
     if (userRows.length > 0) {
       return res.status(400).json({
@@ -57,20 +79,18 @@ export const CreateClient = async (req, res) => {
       });
     }
 
-    // Check if client already exists in MongoDB
-    const existingClient = await Clients.findOne({ Email, Name });
     if (existingClient) {
       return res.status(400).json({
         status: false,
-        message: "Client with this email and name already exists",
+        message: "Client with this email already exists",
       });
     }
 
-    // Ensure password is string before hashing
+    // Hash password after validation
     const plainTextPassword = String(Password).trim();
     const hashedPassword = await bcrypt.hash(plainTextPassword, 10);
 
-    // Create the client
+    // Create client
     const clientDetail = await Clients.create({
       Name,
       Email,
@@ -85,47 +105,60 @@ export const CreateClient = async (req, res) => {
       Company,
       Currency,
       Language,
-      countryCode
+      countryCode,
+      Website,
+      isDisable: true
+    });
+
+    // Prepare tasks for parallel execution (Timeline + Email)
+    const timelineTask = Timeline.create({
+      entityType: "Client",
+      entityId: clientDetail._id,
+      entityTypeRef: "Clients",
+      action: "Created",
+      performedBy,
+      organizationId,
     });
 
     const emailTemplate = `
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
         <p>Dear <strong>${Name}</strong>,</p>
-        <p>Welcome to <strong>Kushel Digi Solutions!</strong> We’re delighted to have you on board. Your account has been successfully created on <strong>${clientDetail.createdAt}</strong>.</p>
-        <p>Below are your login details:</p>
+        <p>Welcome to <strong>Kushel Digi Solutions!</strong> 🎉 Your account was created on <strong>${clientDetail.createdAt}</strong>.</p>
         <ul>
           <li><strong>Username:</strong> ${Email}</li>
           <li><strong>Temporary Password:</strong> ${plainTextPassword}</li>
         </ul>
         <p>
-          <a href="https://hrms.kusheldigi.com/login" 
-             style="background-color: #007bff; color: #fff; padding: 10px 15px; text-decoration: none; border-radius: 5px; display: inline-block;">
+          <a href="https://hrms.kusheldigi.com/login"
+             style="background:#007bff;color:#fff;padding:10px 15px;text-decoration:none;border-radius:5px;">
             Login Here
           </a>
         </p>
-        <p><strong>For security reasons, please change your password upon first login.</strong></p>
-        <p>If you have any questions, feel free to contact our support team.</p>
-        <p>We look forward to working with you!</p>
+        <p><strong>Change your password on first login.</strong></p>
         <br />
-        <p><strong>Best Regards,</strong></p>
-        <p><strong>Kushel Digi Solutions Team</strong></p>
+        <p>Best Regards, <br /><strong>Kushel Digi Solutions Team</strong></p>
       </div>
     `;
 
-    await SendEmail(
+    const emailTask = SendEmail(
       organizationId,
       Email,
       "Welcome to Kushel Digi Solutions – Your Account Details",
       emailTemplate,
-      emailTemplate,
+      emailTemplate
     );
 
+    // Run Timeline + Email in parallel (non-blocking)
+    Promise.allSettled([timelineTask, emailTask]).catch((err) =>
+      console.error("Post-client tasks failed:", err)
+    );
+
+    // Send success response fast
     return res.status(201).json({
       status: true,
-      message: "Client created and email sent successfully",
+      message: "Client created successfully",
       data: clientDetail,
     });
-
   } catch (error) {
     console.error("CreateClient error:", error);
     return res.status(500).json({
@@ -137,13 +170,20 @@ export const CreateClient = async (req, res) => {
 
 export const EditClient = async (req, res) => {
   try {
-    const { Name, Email, City, State, ZipCode, PhoneNumber, Country, Address, Password, Company, Currency, Language, countryCode } = req.body;
+    const { Name, Email, City, State, ZipCode, PhoneNumber, Country, Address, Password, Company, Currency, Language, countryCode, Website } = req.body;
     const { clientId } = req.params;
     const plainTextPassword = Password;
     const hashedPassword = await bcrypt.hash(Password, 10);
 
-    const clientDetail = await Clients.findByIdAndUpdate(clientId, { Name, Email, City, State, ZipCode, PhoneNumber, Country, Address, Password: hashedPassword, Company, Currency, Language, countryCode });
-
+    const clientDetail = await Clients.findByIdAndUpdate(clientId, { Name, Email, City, State, ZipCode, PhoneNumber, Country, Address, Password: hashedPassword, Company, Currency, Language, countryCode, Website }, { new: true });
+    await Timeline.create({
+      entityType: "Client",
+      entityId: clientDetail._id,
+      entityTypeRef: "Clients",
+      action: "Updated",
+      performedBy: req.user.id,
+      organizationId: req.user.organizationId,
+    });
     return res.status(200).json({
       status: true,
       message: "done success",
@@ -260,53 +300,60 @@ export const getClient = async (req, res) => {
 export const clientNotification = async (req, res) => {
   try {
     const { organizationId } = req.user;
-    const { title, description, client } = req.body;
+    const { clientId } = req.params;
+    const { title, description } = req.body;
 
-    if (!client || !Array.isArray(client) || client.length === 0) {
+    if (!title || !description) {
       return res.status(400).json({
         status: false,
-        message: "Client array is required",
+        message: "Title and description are required",
       });
     }
 
-    // Find clients by name + organizationId
-    const clientDocs = await Clients.find({
-      Name: { $in: client },
+    // Client find karo by ID + organizationId
+    const clientDoc = await Clients.findOne({
+      _id: clientId,
       organizationId,
     });
 
-    if (clientDocs.length === 0) {
+    if (!clientDoc) {
       return res.status(404).json({
         status: false,
-        message: "No matching clients found",
+        message: "Client not found for this organization",
       });
     }
 
+    // New notification create
     const newNotification = new Notification({
       title,
       description,
-      userIds: clientDocs.map(c => String(c._id)),
+      organizationId,
+      userIds: [String(clientDoc._id)], // single client ke liye
       readBy: [],
-      date: Date.now(),
     });
 
     const savedNotification = await newNotification.save();
 
     return res.status(201).json({
       status: true,
-      message: "Client notification created successfully",
+      message: "Notification created successfully for the client",
       data: savedNotification,
     });
 
   } catch (error) {
     console.error("Error creating client notification:", error);
     return res.status(500).json({
-      status: 500,
+      status: false,
       message: "Internal server error",
       error: error.message,
     });
   }
 };
+
+
+import mongoose from "mongoose";
+// import Clients from "../models/Clients.js";
+// import Notification from "../models/Notification.js";
 
 export const getClientNotification = async (req, res) => {
   try {
@@ -319,25 +366,78 @@ export const getClientNotification = async (req, res) => {
       });
     }
 
+    // 1️⃣ Fetch notifications for this client
     const notifications = await Notification.find({
       userIds: clientId,
-    }).sort({ date: -1 }).lean();
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (!notifications.length) {
+      return res.status(200).json({
+        status: true,
+        message: "No notifications found",
+        data: [],
+      });
+    }
+
+    // 2️⃣ Extract only MongoDB IDs from userIds
+    const mongoIds = [
+      ...new Set(
+        notifications
+          .flatMap(n => n.userIds)
+          .filter(id => mongoose.Types.ObjectId.isValid(id))
+      ),
+    ];
+
+    // 3️⃣ Fetch matching client details
+    const clients = await Clients.find({ _id: { $in: mongoIds } })
+      .select("_id Name Email profileImage role designation")
+      .lean();
+
+    const clientMap = Object.fromEntries(
+      clients.map(c => [
+        c._id.toString(),
+        {
+          fullName: c.Name || "",
+          email: c.Email || "",
+          id: c._id.toString(),
+          profileImage: c.profileImage || "",
+          role: c.role || "",
+          designation: c.designation || "",
+        },
+      ])
+    );
+
+    // 4️⃣ Build final response format
+    const formattedNotifications = notifications.map(n => ({
+      _id: n._id,
+      title: n.title,
+      description: n.description,
+      date: n.date || n.createdAt?.getTime().toString() || "",
+      user: n.userIds
+        .map(id => clientMap[id])
+        .filter(Boolean), // only Mongo clients, ignore SQL IDs
+      IsRead: n.readBy?.includes(clientId) || false,
+      __v: n.__v || 0,
+    }));
 
     return res.status(200).json({
       status: true,
       message: "Client notifications fetched successfully",
-      data: notifications,
+      data: formattedNotifications,
     });
 
   } catch (error) {
     console.error("Error fetching client notifications:", error);
     return res.status(500).json({
-      status: 500,
+      status: false,
       message: "Internal server error",
       error: error.message,
     });
   }
 };
+
 
 export const DisableClient = async (req, res) => {
   try {
@@ -360,6 +460,20 @@ export const DisableClient = async (req, res) => {
       { new: true }
     );
 
+    // Convert boolean to Active/Deactive
+    const oldStatus = client.isDisable ? "Active" : "Deactive";
+    const newStatus = updatedClient.isDisable ? "Active" : "Deactive";
+    // Create timeline entry
+    await Timeline.create({
+      entityType: "Client",
+      entityId: client._id,
+      entityTypeRef: "Clients",
+      action: "Updated",
+      description: `Updated Status ${oldStatus} to ${newStatus}`,
+      performedBy: req.user?.id,
+      organizationId: req.user?.organizationId,
+    });
+
     return res.status(200).json({
       status: true,
       data: updatedClient
@@ -374,7 +488,47 @@ export const DisableClient = async (req, res) => {
 };
 
 
-// FOR CLIENTS 
+export const DeleteClient = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+
+    // Find the client by ID
+    const client = await Clients.findById(clientId);
+
+    if (!client) {
+      return res.status(404).json({
+        status: false,
+        message: 'Client not found'
+      });
+    }
+
+    // Delete the client
+    await Clients.findByIdAndDelete(clientId);
+    await Timeline.create({
+      entityType: "Client",
+      entityId: client._id,
+      entityTypeRef: "Clients",
+      action: `Deleted`,
+      performedBy: req.user?.id,
+      organizationId: req.user?.organizationId,
+      deletedDataName: client.Name,
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: 'Client deleted successfully'
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+
+// FOR CLIENTS
 export const CreateProject = async (req, res) => {
   try {
 
