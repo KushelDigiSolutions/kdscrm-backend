@@ -11,7 +11,7 @@ router.get('/getNotification', isAuthenticated, getNotificationHR);
 router.delete('/deleteNotification/:userId/:notId', deleteNotification);
 router.put('/markedNotification/:id', isAuthenticated, markedNotification);
 
-router.post('/clientNotification', clientNotification);
-router.get('/getClientNotification/:id', getClientNotification)
+router.post('/clientNotification/:clientId',isAuthenticated, clientNotification);
+router.get('/getClientNotification/:clientId', getClientNotification)
 
 export default router;

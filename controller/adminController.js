@@ -1083,7 +1083,7 @@ export const postAnnouncement = asyncHandler(async (req, res) => {
         emailPromises.push(
           mailSender(organizationId,
             user.email,
-            "Create Announcement",
+            "New Announcement",
             `
   <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; border-radius: 10px; color: #333;">
     <h2 style="text-align: center; color: #4f46e5; margin-bottom: 20px;">📢 New Announcement</h2>
@@ -1153,7 +1153,7 @@ export const postAnnouncement = asyncHandler(async (req, res) => {
           Notification.create({ title, description, user: user.id }),
           mailSender(organizationId,
             user.email,
-            "Create Announcement",
+            "New Announcement",
             `<div>
               <div>Title: ${title}</div>
               <div>Branch: ${Branch}</div>

@@ -38,6 +38,9 @@ const mySchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    Website: {
+      type: String,
+    },
     Company: {
       type: String,
     }, Currency: {
@@ -56,6 +59,7 @@ mySchema.methods.generateAuthToken = function () {
   return jwt.sign(
     {
       _id: this._id,
+      organizationId: this.organizationId,
     },
     process.env.SK,
     {
