@@ -1052,7 +1052,7 @@ export const createTaskTimer = async (req, res) => {
         taskId,
         projectId,
         submitedBy,
-        Note: Note || "Started via API",
+        Note: Note ,
         clockIn: now,
         totalTime: 0,
         status: "running",
@@ -1450,14 +1450,14 @@ export const createNote = async (req, res) => {
       entityId: project,
       entityTypeRef: "Projects",
       action: "Created",
-      performedBy: req.user.id,
+      performedBy: req.user.id || req.user._id,
       organizationId: req.user.organizationId,
       description: `Created A Note for "${projectDetails.projectName}"`,
     });
     res.status(201).json({ status: true, meet });
   } catch (error) {
     console.error("Error creating meet:", error);
-    res.status(500).json({ status: false, message: "Internal server error" });
+    res.status(500).json({ status: false, message:error.message,error });
   }
 };
 

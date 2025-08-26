@@ -13,8 +13,8 @@ const startOfWeek = (date) => {
 export const postActivity = async (req, res) => {
   try {
     const { organizationId, id: userId } = req.user;
-    const { date, checkInTime, checkOutTime, task, status } = req.body;
-    const breaks = false;
+    const { date, checkInTime,breaks, checkOutTime, task, status } = req.body;
+    // const breaks = false;
 
     // Check and delete any existing activity
     const existingActivity = await ActivityTracker.findOneAndDelete({ userId });

@@ -647,7 +647,7 @@ export const acceptLeaveHandler = async ({ id, userId, startDate, endDate }) => 
     const emailBody = `<div><div>Total holiday of ${adjustedDays} days Accepted</div></div>`;
 
     // Fire and forget the email
-    mailSender(organizationId,userDetail.email, emailSubject, emailBody)
+    mailSender(userDetail.organizationId,userDetail.email, emailSubject, emailBody)
       .catch(err => console.error("Email failed:", err));
 
     await Promise.all([

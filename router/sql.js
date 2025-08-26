@@ -8,7 +8,7 @@ import {
     getUserByOrganization, deleteUser, userLogin, postAssets,
     getAssets, getAssetsByID, getAssetsByOrganization, updateAsset,
     deleteAsset, uploadUserDocuments, getUserDocuments, createAdmin, fetchUserDetail, createOrUpdateEmailConfig,
-    getEmailConfig, updateEmailConfig, deleteEmailConfig
+    getEmailConfig, updateEmailConfig, deleteEmailConfig, signupOrganizationWithAdmin
 } from "../controller/sql/user.js";
 import isAuthenticated from "../middleware/auth.js";
 // import { uploadToCloudinary } from "../../utils/cloudinary.js";
@@ -56,6 +56,8 @@ router.post("/createEmailConfig", isAuthenticated, createOrUpdateEmailConfig);
 router.get("/getEmailConfig", isAuthenticated, getEmailConfig);
 router.put("/updateEmailConfig", isAuthenticated, updateEmailConfig);
 router.delete("/deleteEmailConfig", isAuthenticated, deleteEmailConfig);
+
+router.post("/signupOrganizationWithAdmin", signupOrganizationWithAdmin)
 
 
 export default router;

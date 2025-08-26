@@ -13,7 +13,7 @@ router.post("/createProject", isAuthenticated, CreateProject);
 router.get("/getAllProject", isAuthenticated, getAllProjects);
 router.post("/editProject", isAuthenticated, EditProject);
 router.delete("/deleteProject/:id", isAuthenticated, deleteProject);
-router.get("/getTasksByProjectId/:projectId", isAuthenticated, getTasksByProjectId);
+router.get("/getTasksByProjectId/:projectId",  getTasksByProjectId);
 router.post("/createTask", isAuthenticated, createTask);
 router.delete("/deleteTask/:taskId", isAuthenticated, deleteTask);
 router.post("/editTask", isAuthenticated, editTask);
@@ -29,7 +29,7 @@ router.get("/getUserTaskTimer", isAuthenticated, getUserTaskTimer);
 
 router.get("/getProjectTaskTimelines/:projectId", getProjectTaskTimelines);
 router.delete("/deleteProjectFile/:fileId", deleteProjectFile)
-router.post('/createNote', isAuthenticated, createNote);
+router.post('/createNote', createNote);
 router.get('/getNotesByProject/:projectId', getNotesByProject);
 router.put('/updateNote/:id', isAuthenticated, updateNote);
 router.delete('/deleteNote/:id', isAuthenticated, deleteNote);
