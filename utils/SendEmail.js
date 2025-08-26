@@ -38,7 +38,7 @@ const defaultConfig = {
   secure: true,
   auth: {
     user: "info@kusheldigi.com",
-    pass: "Kusheldigiinfopass",
+    pass: "KRC@infokds",
   },
   from: '"Kushel Digi Solutions" <info@kusheldigi.com>',
 };

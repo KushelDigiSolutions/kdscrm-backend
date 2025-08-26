@@ -1999,3 +1999,132 @@ export const deleteEmailConfig = async (req, res) => {
         return res.status(500).json({ success: false, message: "Server error", error: err.message });
     }
 };
+
+
+
+// import bcrypt from "bcrypt";
+// import mongoose from "mongoose";
+// import { db } from "../config/db.js"; // apka mysql db instance
+// import { removeUndefined } from "../utils/removeUndefined.js";
+// import { SendEmail } from "../utils/sendEmail.js";
+
+// Signup (Organization + Admin together)
+export const signupOrganizationWithAdmin = async (req, res) => {
+    try {
+        const {
+            orgName,
+            orgEmail,
+            adminName,
+            adminEmail,
+            password,
+            mobile,
+            profileImage
+        } = req.body;
+
+        // Validate required fields
+        if (!orgName || !orgEmail || !adminName || !adminEmail || !password) {
+            return res.status(400).json({ status: false, message: "Required fields are missing" });
+        }
+
+        // Check if organization already exists
+        const [existingOrg] = await db.execute(
+            "SELECT 1 FROM organizations WHERE email = ?",
+            [orgEmail]
+        );
+        if (existingOrg.length) {
+            return res.status(400).json({ status: false, message: "Organization email already registered" });
+        }
+
+        // ===== Create Organization =====
+        let orgId;
+        let unique = false;
+        while (!unique) {
+            orgId = new mongoose.Types.ObjectId().toHexString();
+            const [existId] = await db.execute("SELECT 1 FROM organizations WHERE id = ?", [orgId]);
+            if (!existId.length) unique = true;
+        }
+
+        const orgData = removeUndefined({
+            id: orgId,
+            name: orgName,
+            email: orgEmail,
+            userLimit: 10, // fixed limit
+        });
+
+        const orgFields = Object.keys(orgData);
+        const orgPlaceholders = orgFields.map(() => "?").join(", ");
+        const orgValues = orgFields.map(k => orgData[k]);
+
+        await db.execute(
+            `INSERT INTO organizations (${orgFields.join(", ")}) VALUES (${orgPlaceholders})`,
+            orgValues
+        );
+
+        // ===== Create Admin User =====
+        // Check if admin email already exists under this org
+        const [userRows] = await db.execute(
+            "SELECT 1 FROM users WHERE email = ? AND organizationId = ?",
+            [adminEmail, orgId]
+        );
+        if (userRows.length > 0) {
+            return res.status(400).json({ status: false, message: "Admin email already exists in this org" });
+        }
+
+        let userId;
+        unique = false;
+        while (!unique) {
+            userId = new mongoose.Types.ObjectId().toHexString();
+            const [existUser] = await db.execute("SELECT 1 FROM users WHERE id = ?", [userId]);
+            if (!existUser.length) unique = true;
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const userData = removeUndefined({
+            id: userId,
+            fullName: adminName,
+            email: adminEmail,
+            password: hashedPassword,
+            mobile,
+            profileImage,
+            role: "ADMIN",
+            organizationId: orgId,
+        });
+
+        const userFields = Object.keys(userData);
+        const userPlaceholders = userFields.map(() => "?").join(", ");
+        const userValues = userFields.map(k => userData[k]);
+
+        await db.execute(
+            `INSERT INTO users (${userFields.join(", ")}) VALUES (${userPlaceholders})`,
+            userValues
+        );
+
+        // Send Welcome Email
+        const html = `
+        <div>
+            Welcome <b>${adminName}</b>! 🎉<br/><br/>
+            Your organization <strong>${orgName}</strong> has been created successfully with a limit of 10 users.<br/>
+            <br/>
+            <strong>Admin Login Details:</strong><br/>
+            Email: ${adminEmail}<br/>
+            Temporary Password: ${password}<br/>
+            <br/>
+            <a href="https://hrms.kusheldigi.com/login">Login here</a><br/><br/>
+            Regards,<br/>Kushel Digi Solutions
+        </div>`;
+
+        await SendEmail(orgId, adminEmail, "Welcome to HRMS - Organization Created", html, html);
+
+        return res.status(201).json({
+            status: true,
+            message: "Organization & Admin created successfully",
+            organization: orgData,
+            admin: { ...userData, password: undefined } // password hide in response
+        });
+
+    } catch (err) {
+        console.error("Error in signup:", err);
+        return res.status(500).json({ status: false, message: "Internal Server Error" });
+    }
+};
