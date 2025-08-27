@@ -183,9 +183,15 @@ CREATE TABLE organizations (
   id CHAR(36) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
-  userLimit INT NOT NULL,
+  userLimit INT NOT NULL DEFAULT 10,
   imageUrl VARCHAR(255),
-  isDeactivated VARCHAR(20) DEFAULT 'No'
+  isDeactivated VARCHAR(20) DEFAULT 'No',
+
+  -- subscription related fields
+  subscriptionStatus ENUM('FREE', 'ACTIVE', 'EXPIRED') DEFAULT 'FREE',
+  subscriptionStart DATE DEFAULT (CURRENT_DATE),
+  subscriptionEnd DATE DEFAULT (DATE_ADD(CURRENT_DATE, INTERVAL 3 MONTH)),
+
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
   updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

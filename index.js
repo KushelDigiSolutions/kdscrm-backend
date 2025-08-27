@@ -138,7 +138,6 @@ const task = cron.schedule('55 23 * * *', async () => {
 app.post("/email-settings/test", async (req, res) => {
   try {
     const { to, subject, text, host, port, secure, user, pass, from } = req.body;
-
     const transporter = createTransport({
       host: host,
       port: port,

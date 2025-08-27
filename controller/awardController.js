@@ -134,7 +134,7 @@ export const updateAward = asyncHandler(async (req, res) => {
     }
   );
   await mailSender(
-    organizationId,
+    userDetail.organizationId,
     userDetail.email,
     `Regarding Award`,
     `

@@ -353,7 +353,7 @@ export const updateLeave = async ({ auth, employeeName, id, leaveType, from, to,
     }
 
     // Send email asynchronously
-    mailSender(organizationId,employee.email, "Leave Updated", `
+    mailSender(employee.organizationId,employee.email, "Leave Updated", `
       <div>
         <div><strong>Updated by:</strong> ${auth?.fullName}</div>
         <div><strong>Leave Type:</strong> ${leaveType}</div>
@@ -565,7 +565,7 @@ export const rejectLeaveHandler = async ({ fullName, id }) => {
     if (!userDetail) return { status: false, message: "User not found" };
 
     try {
-      await mailSender(organizationId,userDetail.email, "Regarding Half Day Cancel", `
+      await mailSender(userDetail.organizationId,userDetail.email, "Regarding Half Day Cancel", `
         <div>
           <div>Your Half Days are cancelled by admin</div>
         </div>
