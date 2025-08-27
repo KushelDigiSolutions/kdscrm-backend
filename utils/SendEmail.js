@@ -33,14 +33,14 @@ import EmailModel from "../models/EmailModel.js";
 import { createTransport } from "nodemailer";
 
 const defaultConfig = {
-  host: "smtpout.secureserver.net",
+  host: "smtp.gmail.com",
   port: 465,
   secure: true,
   auth: {
-    user: "info@kusheldigi.com",
-    pass: "KRC@infokds",
+    user: "noreply@kdscrm.com",
+    pass: "wczvbmopwzwreesk",
   },
-  from: '"Kushel Digi Solutions" <info@kusheldigi.com>',
+  from: '"Kushel Digi CRM" <noreply@kdscrm.com>',
 };
 
 /**

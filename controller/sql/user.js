@@ -639,7 +639,7 @@ export const createUser = async (req, res) => {
         <br/>
         Please use the link below to log in for the first time. For security purposes, we recommend changing your password after your initial login.
         <br/>
-        Login Here; ${`https://hrms.kusheldigi.com/login`}
+        Login Here; ${`https://app.kdscrm.com/login`}
         
         <br/>
         If you have any questions or need assistance, please don’t hesitate to reach out to our support team.
@@ -898,7 +898,7 @@ export const createAdmin = async (req, res) => {
             <strong>Email:</strong> ${email}<br/>
             <strong>Temporary Password:</strong> ${password}<br/>
             <br/>
-            <a href="https://hrms.kusheldigi.com/login">Login here</a><br/>
+            <a href="https://app.kdscrm.com/login">Login here</a><br/>
             Please change your password after logging in.<br/><br/>
             Regards,<br/>Kushel Digi Solutions
         </div>`;
@@ -2065,7 +2065,7 @@ export const signupOrganizationWithAdmin = async (req, res) => {
                     Email: ${adminEmail}<br/>
                     Temporary Password: ${password}<br/>
                     <br/>
-                    <a href="https://hrms.kusheldigi.com/login">Login here</a><br/><br/>
+                    <a href="https://app.kdscrm.com/login">Login here</a><br/><br/>
                     Regards,<br/>Kushel Digi Solutions
                 </div>`;
             await SendEmail(orgId, adminEmail, "Welcome to HRMS - Organization Created", html, html);
