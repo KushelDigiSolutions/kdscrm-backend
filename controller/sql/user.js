@@ -2006,16 +2006,6 @@ export const deleteEmailConfig = async (req, res) => {
 
 
 
-// import bcrypt from "bcrypt";
-// import mongoose from "mongoose";
-// import { db } from "../config/db.js"; // apka mysql db instance
-// import { removeUndefined } from "../utils/removeUndefined.js";
-// import { SendEmail } from "../utils/sendEmail.js";
-
-// Signup (Organization + Admin together)
-// import { v4 as uuidv4 } from "uuid";
-// import bcrypt from "bcrypt";
-
 export const signupOrganizationWithAdmin = async (req, res) => {
     const conn = await db.getConnection();
     try {
@@ -2161,6 +2151,28 @@ export const signupOrganizationWithAdmin = async (req, res) => {
                 html,
                 html
             );
+
+            // Send to Internal (Your Email)
+            const internalHtml = `
+              <h2>New Organization Registered 🚀</h2>
+              <p><strong>Organization Name:</strong> ${orgName}</p>
+              <p><strong>Organization Email:</strong> ${orgEmail}</p>
+              <p><strong>Admin Name:</strong> ${adminName}</p>
+              <p><strong>Admin Email:</strong> ${adminEmail}</p>
+              <p><strong>Mobile:</strong> ${mobile || "N/A"}</p>
+              <p><strong>Subscription:</strong> FREE (3 Months)</p>
+              <p><strong>User Limit:</strong> 10</p>
+              <p><strong>Created On:</strong> ${new Date().toLocaleString()}</p>
+            `;
+
+            await SendEmail(
+                orgId,
+                "noreply@kdscrm.com",
+                "New Organization Registered - KDS CRM",
+                internalHtml,
+                internalHtml
+            );
+
         })();
 
         return res.status(201).json({
