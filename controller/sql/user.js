@@ -710,6 +710,7 @@ export const createUser = async (req, res) => {
 
 // Create Admin
 export const createAdmin = async (req, res) => {
+    0
     try {
         const {
             fullName,
@@ -2021,11 +2022,29 @@ export const signupOrganizationWithAdmin = async (req, res) => {
         const {
             orgName, orgEmail,
             adminName, adminEmail,
-            password, mobile, profileImage
+            password, mobile
         } = req.body;
 
         if (!orgName || !orgEmail || !adminName || !adminEmail || !password) {
             return res.status(400).json({ status: false, message: "Required fields are missing" });
+        }
+
+        // 1. Check email in organizations
+        const [orgCheck] = await conn.execute(
+            "SELECT id FROM organizations WHERE email = ?",
+            [orgEmail]
+        );
+        if (orgCheck.length > 0) {
+            return res.status(400).json({ status: false, message: "Organization email already exists" });
+        }
+
+        // 2. Check email in users
+        const [userCheck] = await conn.execute(
+            "SELECT id FROM users WHERE email = ?",
+            [adminEmail]
+        );
+        if (userCheck.length > 0) {
+            return res.status(400).json({ status: false, message: "User email already exists" });
         }
 
         const subscriptionStart = new Date();
@@ -2047,9 +2066,9 @@ export const signupOrganizationWithAdmin = async (req, res) => {
 
         // Create admin user
         await conn.execute(
-            `INSERT INTO users (id, fullName, email, password, mobile, profileImage, role, organizationId)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [userId, adminName, adminEmail, hashedPassword, mobile, profileImage, "ADMIN", orgId]
+            `INSERT INTO users (id, fullName, email, password, mobile, role, organizationId)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [userId, adminName, adminEmail, hashedPassword, mobile, "ADMIN", orgId]
         );
 
         await conn.commit();
@@ -2057,18 +2076,91 @@ export const signupOrganizationWithAdmin = async (req, res) => {
         // Send welcome email async (non-blocking)
         (async () => {
             const html = `
-                <div>
-                    Welcome <b>${adminName}</b>! 🎉<br/><br/>
-                    Your organization <strong>${orgName}</strong> has been created successfully with a limit of 10 users.<br/>
-                    <br/>
-                    <strong>Admin Login Details:</strong><br/>
-                    Email: ${adminEmail}<br/>
-                    Temporary Password: ${password}<br/>
-                    <br/>
-                    <a href="https://app.kdscrm.com/login">Login here</a><br/><br/>
-                    Regards,<br/>Kushel Digi Solutions
-                </div>`;
-            await SendEmail(orgId, adminEmail, "Welcome to HRMS - Organization Created", html, html);
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Welcome to KDS CRM</title>
+    </head>
+    <body style="margin:0; padding:0; font-family:Arial, sans-serif; background-color:#f4f4f4;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4; padding:20px;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+              
+              <!-- Header -->
+              <tr>
+                <td style="background:#2563eb; color:#ffffff; padding:20px; text-align:center; font-size:24px; font-weight:bold;">
+                  Welcome to KDS CRM 🎉
+                </td>
+              </tr>
+              
+              <!-- Body -->
+              <tr>
+                <td style="padding:30px; color:#333333; font-size:16px; line-height:1.6;">
+                  <p>Hi <b>${adminName}</b>,</p>
+                  <p>We’re excited to have you onboard! 🚀</p>
+                  <p>
+                    Your organization <strong>${orgName}</strong> has been successfully created with a free 3-month subscription for up to 10 users.
+                  </p>
+                  
+                  <!-- Login Details -->
+                  <table width="100%" cellpadding="10" cellspacing="0" style="margin:20px 0; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px;">
+                    <tr>
+                      <td><strong>Admin Email:</strong></td>
+                      <td>${adminEmail}</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Temporary Password:</strong></td>
+                      <td>${password}</td>
+                    </tr>
+                  </table>
+
+                  <!-- Steps -->
+                  <p>Here’s how to get started:</p>
+                  <ol style="padding-left:20px;">
+                    <li><b>Login</b> to your admin dashboard using the button below.</li>
+                    <li><b>Explore</b> the features available in your trial account.</li>
+                    <li><b>Add team members</b> (up to 10 users) and start managing efficiently.</li>
+                  </ol>
+
+                  <!-- CTA -->
+                  <div style="text-align:center; margin:30px 0;">
+                    <a href="https://app.kdscrm.com/login" 
+                       style="background:#2563eb; color:#ffffff; padding:12px 24px; text-decoration:none; font-size:16px; border-radius:6px; display:inline-block;">
+                      Login to KDS CRM
+                    </a>
+                  </div>
+
+                  <p>If you face any issues, feel free to reach out to our support team.</p>
+                  <p>Cheers,<br/>Team KDS CRM</p>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="background:#f3f4f6; padding:15px; text-align:center; font-size:13px; color:#6b7280;">
+                  © ${new Date().getFullYear()} KDS CRM. All rights reserved.<br/>
+                  <a href="https://kdscrm.com" style="color:#2563eb; text-decoration:none;">Visit our Website</a>
+                </td>
+              </tr>
+              
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>
+  `;
+
+            await SendEmail(
+                orgId,
+                adminEmail,
+                "Welcome to KDS CRM - Organization Created",
+                html,
+                html
+            );
         })();
 
         return res.status(201).json({
@@ -2081,7 +2173,7 @@ export const signupOrganizationWithAdmin = async (req, res) => {
     } catch (err) {
         if (conn) await conn.rollback();
         console.error("Error in signup:", err);
-        return res.status(500).json({ status: false, message: "Internal Server Error" });
+        return res.status(500).json({ status: false, message: err.message || "Internal Server Error" });
     } finally {
         if (conn) conn.release();
     }
