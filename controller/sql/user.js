@@ -121,10 +121,10 @@ export const updateOrganization = async (req, res) => {
             return res.status(404).json({ message: 'Organization not found' });
         }
         const [rows] = await db.execute('SELECT * FROM organizations WHERE id = ?', [id]);
-        return res.status(200).json({ id, data: rows[0] });
+        return res.status(200).json({ id, data: rows[0], status: true });
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: error.message, status: false });
     }
 };
 
