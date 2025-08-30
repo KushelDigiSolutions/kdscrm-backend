@@ -1577,3 +1577,73 @@ export const deleteAttachment = async (req, res) => {
         return res.status(500).json({ status: false, message: "Server Error" });
     }
 };
+
+
+
+export const justdialWebhook = async (req, res) => {
+    try {
+        const apiKey = req.headers['x-api-key'];
+        if (apiKey !== process.env.JUSTDIAL_SECRET_KEY) {
+            return res.status(401).json({ status: false, message: "Unauthorized" });
+        }
+
+        const {
+            customer_name,
+            phone,
+            email,
+            service,
+            city,
+            source,
+            timestamp,
+            lead_id
+        } = req.body;
+        const { organizationId } = req.params;
+
+        // Split name if possible
+        const nameParts = customer_name.split(' ');
+        const FirstName = nameParts[0];
+        const LastName = nameParts.slice(1).join(' ') || '';
+
+        const [organization] = await db.execute('SELECT * FROM organizations WHERE id = ?', [id]);
+        if (organization.length === 0) {
+            return res.status(404).json({ message: 'Organization not found' });
+        }
+
+        // 🧠 Set defaults for your schema fields
+        const newLead = await Lead.create({
+            LeadOwner: "System",
+            LeadCreator: "Justdial Webhook",
+            Company: "Justdial Lead",
+            FirstName,
+            LastName,
+            Email: email,
+            Phone: phone,
+            City: city,
+            LeadSource: source || "Justdial",
+            LeadStatus: "New",
+            DescriptionInfo: `Service Requested: ${service}`,
+            date: timestamp || new Date(),
+            organizationId
+        });
+
+        // Log timeline entry
+        await LeadTimeline.create({
+            leadId: newLead._id,
+            action: "Lead Created via Justdial Webhook",
+            createdBy: "Justdial"
+        });
+
+        return res.status(201).json({
+            status: true,
+            message: "Lead received and saved",
+            data: newLead
+        });
+
+    } catch (error) {
+        console.error("Justdial Webhook Error:", error);
+        return res.status(500).json({
+            status: false,
+            message: "Server error"
+        });
+    }
+};
