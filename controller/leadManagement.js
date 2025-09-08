@@ -360,6 +360,38 @@ export const getLead = async (req, res) => {
     }
 };
 
+export const addUsersToLeads = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const { userIds } = req.body;
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({
+        status: false,
+        message: "userIds array is required",
+      });
+    }
+
+    const result = await Lead.updateMany(
+      { organizationId },
+      { $addToSet: { showTo: { $each: userIds } } } // multiple push without duplicates
+    );
+
+    return res.status(200).json({
+      status: true,
+      message: "Users added to all leads successfully",
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    console.log("Error in addUsersToLeads:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
 export const getAllLeads = async (req, res) => {
     try {
         const { organizationId } = req.user

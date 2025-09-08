@@ -10,6 +10,7 @@ import {
     getAttachmentById,
     updateAttachment,
     deleteAttachment,
+    addUsersToLeads
 } from "../controller/leadManagement.js"
 import isAuthenticated from "../middleware/auth.js"
 
@@ -17,6 +18,7 @@ const router = Router();
 
 
 router.post("/postLead", isAuthenticated, createLead);
+router.post("/addUsersToLeads", isAuthenticated, addUsersToLeads);
 router.get("/getLead/:id", getLead);
 router.get("/allLeads", isAuthenticated, getAllLeads);
 router.post("/updateLead/:id", isAuthenticated, editLead);
