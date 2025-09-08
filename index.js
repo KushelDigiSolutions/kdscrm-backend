@@ -44,7 +44,7 @@ import sqlRouter from "./router/sql.js"
 import googleCalender from "./router/integrations/googleCalender.js"
 import whatsappIntegration from "./router/integrations/whatsappIntegration.js"
 import proRoute from "./router/integrations/proRoute.js"
-
+import assetRoutes from "./router/assetsRouter.js"
 
 dotenv.config();
 const port = process.env.PORT;
@@ -107,6 +107,7 @@ app.use("/latest_project", ProjectRoute)
 app.use("/api", googleCalender);
 app.use("/api", whatsappIntegration);
 app.use("/api", proRoute);
+app.use("/api", assetRoutes);
 
 const task = cron.schedule('55 23 * * *', async () => {
 

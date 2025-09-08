@@ -393,3 +393,50 @@ CREATE TABLE assets (
 --   account_holder_name VARCHAR(100),
 --   contact_person_name VARCHAR(255)
 -- );
+
+
+
+CREATE TABLE IF NOT EXISTS asset (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    asset_name VARCHAR(150) NOT NULL,         
+    identification_number VARCHAR(100) UNIQUE,
+    asset_condition VARCHAR(50),         
+    model_number VARCHAR(100),               
+    attachment VARCHAR(255),                   
+    current_value DECIMAL(12,2) DEFAULT 0.00, 
+    acquired_date DATE,                       
+    comments TEXT, 
+    organizationId CHAR(36),                          
+    is_allocated TINYINT(1) DEFAULT 0,  
+    allocated_to CHAR(36),                
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_asset_org FOREIGN KEY (organizationId) REFERENCES organizations(id),
+    CONSTRAINT fk_asset_user FOREIGN KEY (allocated_to) REFERENCES users(id)
+);
+
+
+CREATE TABLE IF NOT EXISTS asset_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id CHAR(36),       
+    asset_id INT NOT NULL,          
+    allocate_date DATE NOT NULL,   
+    comments TEXT,                 
+    notify_email BOOLEAN DEFAULT FALSE,
+
+    -- deallocation fields
+    deallocation_date DATE DEFAULT NULL,
+    handed_over_to CHAR(36) DEFAULT NULL,
+    return_condition ENUM('Good', 'Average', 'Bad') DEFAULT NULL,
+    deallocation_description TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    organizationId CHAR(36),
+
+    CONSTRAINT fk_asset_txn_employee FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_asset_txn_asset FOREIGN KEY (asset_id) REFERENCES asset(id) ON DELETE CASCADE,
+    CONSTRAINT fk_asset_txn_handover FOREIGN KEY (handed_over_to) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_asset_txn_org FOREIGN KEY (organizationId) REFERENCES organizations(id)
+);
+

@@ -63,7 +63,8 @@ const mySchema = new mongoose.Schema({
   //   type: mongoose.Schema.Types.Mixed,
   //   default: {},
   // },
-  organizationId: String
+  organizationId: String,
+  showTo: [String]
 });
 
 const Lead = mongoose.model("Lead", mySchema);
