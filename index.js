@@ -27,6 +27,7 @@ import authRouter from "./router/authRouter.js";
 import systemRouter from "./router/systemRouter.js";
 // import apprisalRouter from "./router/apprisalRouter.js"
 // import indicatorRouter from "./router/indicatorRouter.js";
+import ticketRoutes from './router/ticketRoutes.js';
 import { connectDb } from "./db/user_conn.js";
 import cookieParser from "cookie-parser";
 import fileUpload from "express-fileupload";
@@ -108,6 +109,7 @@ app.use("/api", googleCalender);
 app.use("/api", whatsappIntegration);
 app.use("/api", proRoute);
 app.use("/api", assetRoutes);
+app.use('/api/tickets', ticketRoutes);
 
 const task = cron.schedule('55 23 * * *', async () => {
 
@@ -136,44 +138,64 @@ const task = cron.schedule('55 23 * * *', async () => {
   timezone: 'Asia/Kolkata'
 });
 
+
+let transporterCache = null;
+function getTransporter({ host, port, secure, user, pass }) {
+  if (!transporterCache) {
+    transporterCache = createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+      pool: true, // ✅ enables connection pooling
+      maxConnections: 5, // ✅ max simultaneous connections
+      maxMessages: 100,  // ✅ reuse connection for multiple mails
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 10000, // ✅ timeout (10s)
+    });
+  }
+  return transporterCache;
+}
+
 app.post("/email-settings/test", async (req, res) => {
   try {
     const { to, subject, text, host, port, secure, user, pass, from } = req.body;
-    const transporter = createTransport({
-      host: host,
-      port: port,
-      secure: secure,
-      auth: {
-        user: user,
-        pass: pass
-      },
-      from: from,
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
+
+    // ✅ Basic validation
+    if (!to || !host || !port || !user || !pass) {
+      return res.status(400).json({
+        status: false,
+        message: "Missing required fields (to, host, port, user, pass).",
+      });
+    }
+
+    const transporter = getTransporter({ host, port, secure, user, pass });
+
+    // ✅ Send mail with async/await
     await transporter.sendMail({
-      from: from, // ✅ Use value from req.body
+      from: from || user, // fallback to user if from is missing
       to,
-      subject,
-      text,
-      html: `<div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 30px;">
-  <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 30px;">
-    <h1 style="color: #333333; font-size: 24px; margin-bottom: 20px;">This is a test email</h1>
-    <p style="color: #555555; font-size: 16px; line-height: 1.6;">
-      Sent via <strong>HRMS</strong> with custom config.
-    </p>
-  </div>
-</div>`,
+      subject: subject || "Test Email",
+      text: text || "This is a test email",
+      html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 30px;">
+          <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 30px;">
+            <h1 style="color: #333333; font-size: 24px; margin-bottom: 20px;">This is a test email</h1>
+            <p style="color: #555555; font-size: 16px; line-height: 1.6;">
+              Sent via <strong>HRMS</strong> with custom config.
+            </p>
+          </div>
+        </div>`,
     });
 
     res.status(200).json({
       status: true,
-      message: "Test mail sent successfully.",
+      message: "✅ Test mail sent successfully.",
     });
   } catch (error) {
     console.error("Mail Error:", error);
-    let userMessage = "Failed to send test mail.";
+
+    let userMessage = "❌ Failed to send test mail.";
     if (error.code === "EAUTH") {
       userMessage = "Authentication failed. Please check your email username or password.";
     } else if (error.code === "ECONNECTION") {
@@ -184,7 +206,15 @@ app.post("/email-settings/test", async (req, res) => {
       userMessage = "Invalid recipient email address.";
     } else if (error.message.includes("self signed certificate")) {
       userMessage = "SSL certificate issue. Try using TLS or set encryption properly.";
+    } else if (error.code === "ETIMEDOUT") {
+      userMessage = "SMTP connection timed out. Please try again.";
     }
+
+    res.status(500).json({
+      status: false,
+      message: userMessage,
+      debug: error.message, // ⚠️ remove in production
+    });
   }
 });
 

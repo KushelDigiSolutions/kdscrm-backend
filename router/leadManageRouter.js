@@ -1,6 +1,6 @@
 import { Router } from "express"
 import {
-    createLead, getLead, getAllLeads, editLead, getLeadTimeline, convertLeadToDeal, GetAllDeals, getDeal, createExternalLead, updateLeadStatus, createTimeLineNote, handleInstalledMetaWebhook,
+    createLead, getLead, getAllLeads, addPermissionToShowAllLead, editLead, getLeadTimeline, convertLeadToDeal, GetAllDeals, getDeal, createExternalLead, updateLeadStatus, createTimeLineNote, handleInstalledMetaWebhook,
     getTimelineNotes,
     updateTimelineNote,
     deleteTimelineNote, editDeal,
@@ -21,6 +21,7 @@ router.post("/postLead", isAuthenticated, createLead);
 router.post("/addUsersToLeads", isAuthenticated, addUsersToLeads);
 router.get("/getLead/:id", getLead);
 router.get("/allLeads", isAuthenticated, getAllLeads);
+router.post("/addPermissionToShowAllLead", isAuthenticated, addPermissionToShowAllLead);
 router.post("/updateLead/:id", isAuthenticated, editLead);
 router.get("/getLeadTimeline/:id", getLeadTimeline);
 router.post('/updateleadtatus/:id', updateLeadStatus)

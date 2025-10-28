@@ -361,34 +361,34 @@ export const getLead = async (req, res) => {
 };
 
 export const addUsersToLeads = async (req, res) => {
-  try {
-    const { organizationId } = req.user;
-    const { userIds } = req.body;
+    try {
+        const { organizationId } = req.user;
+        const { userIds } = req.body;
 
-    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-      return res.status(400).json({
-        status: false,
-        message: "userIds array is required",
-      });
+        if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+            return res.status(400).json({
+                status: false,
+                message: "userIds array is required",
+            });
+        }
+
+        const result = await Lead.updateMany(
+            { organizationId },
+            { $addToSet: { showTo: { $each: userIds } } } // multiple push without duplicates
+        );
+
+        return res.status(200).json({
+            status: true,
+            message: "Users added to all leads successfully",
+            modifiedCount: result.modifiedCount,
+        });
+    } catch (error) {
+        console.log("Error in addUsersToLeads:", error);
+        return res.status(500).json({
+            status: false,
+            message: "Internal server error",
+        });
     }
-
-    const result = await Lead.updateMany(
-      { organizationId },
-      { $addToSet: { showTo: { $each: userIds } } } // multiple push without duplicates
-    );
-
-    return res.status(200).json({
-      status: true,
-      message: "Users added to all leads successfully",
-      modifiedCount: result.modifiedCount,
-    });
-  } catch (error) {
-    console.log("Error in addUsersToLeads:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
-  }
 };
 
 
@@ -1060,6 +1060,63 @@ export const deleteAccount = async (req, res) => {
         });
     }
 };
+
+
+export const addPermissionToShowAllLead = async (req, res) => {
+  try {
+    const ids = req.body; // array of user IDs
+    const { organizationId } = req.user;
+    console.log("Payload IDs:", ids);
+
+    if (!Array.isArray(ids)) {
+      return res.status(400).json({ message: "Invalid request: IDs should be an array" });
+    }
+
+    // 1️⃣ First set all users in this organization to FALSE
+    await db.execute(
+      `UPDATE users 
+       SET show_all_lead = FALSE 
+       WHERE organizationId = ?`,
+      [organizationId]
+    );
+
+    // 2️⃣ Then set selected users (from payload) to TRUE
+    if (ids.length > 0) {
+      const placeholders = ids.map(() => "?").join(",");
+      await db.execute(
+        `UPDATE users 
+         SET show_all_lead = TRUE 
+         WHERE id IN (${placeholders}) 
+         AND organizationId = ?`,
+        [...ids, organizationId]
+      );
+    }
+
+    // ✅ Optional: Fetch updated list to return in response
+    const [updatedUsers] = await db.execute(
+      `SELECT id, fullName, show_all_lead 
+       FROM users 
+       WHERE organizationId = ?`,
+      [organizationId]
+    );
+
+    return res.status(200).json({
+      message: "Show All Lead permissions updated successfully",
+      data: updatedUsers,
+      success: true,
+    });
+
+  } catch (error) {
+    console.error("Error updating Show All Lead permissions:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+      success: false
+    });
+  }
+};
+
+
 
 
 
