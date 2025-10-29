@@ -22,9 +22,9 @@ const router = express.Router();
 router.post('/', createTicket);
 router.get('/', isAuthenticated, getAllTickets);
 router.get('/:id', getTicketById);
-router.get('/my/:id', isAuthenticated, getTicketByClientId);
-router.put('/:id', isAuthenticated, updateTicket);
-router.delete('/:id', isAuthenticated, deleteTicket);
+router.get('/my/:id', getTicketByClientId);
+router.put('/:id',  updateTicket);
+router.delete('/:id',  deleteTicket);
 
 // Workflow Actions
 router.put('/:id/assign', assignTicket);
