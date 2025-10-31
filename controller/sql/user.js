@@ -191,6 +191,10 @@ const allPermission = [
     "employeeManageActivatePermission",
     "hrManagement",
     "holidaylistPermission",
+    "showTMSPermission",
+    "tmsEditPermission",
+    "tmsDeletePermission",
+    "tmsCreatePermission",
 ];
 
 // Create Permissions

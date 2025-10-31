@@ -255,6 +255,16 @@ CREATE TABLE permission_roles (
   FOREIGN KEY (organizationId) REFERENCES organizations(id)
 );
 
+
+ALTER TABLE permission_roles
+DROP FOREIGN KEY permission_roles_ibfk_1,
+ADD COLUMN showTMSPermission BOOLEAN DEFAULT FALSE,
+ADD COLUMN tmsEditPermission BOOLEAN DEFAULT FALSE,
+ADD COLUMN tmsDeletePermission BOOLEAN DEFAULT FALSE,
+ADD COLUMN tmsCreatePermission BOOLEAN DEFAULT FALSE,
+ADD CONSTRAINT fk_permission_roles_orgid FOREIGN KEY (organizationId)
+REFERENCES organizations(id) ON DELETE CASCADE;
+
 CREATE TABLE users (
   id CHAR(36) PRIMARY KEY,
   fullName VARCHAR(255),
