@@ -2215,13 +2215,117 @@ export const signupOrganizationWithAdmin = async (req, res) => {
         // Send welcome email
         (async () => {
             const html = `
-                <!-- Your HTML email content here (same as before) -->
-                <p>Hi <b>${adminName}</b>,<br/>
-                Your organization <b>${orgName}</b> is created successfully.<br/>
-                Login Email: <b>${adminEmail}</b><br/>
-                Password: <b>${password}</b></p>
-                <p><a href="https://app.kdscrm.com/login">Login Now</a></p>
-            `;
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Organization Created Successfully</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        background-color: #f6f9fc;
+        color: #333;
+      }
+      .email-container {
+        max-width: 600px;
+        margin: 30px auto;
+        background: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+      }
+      .header {
+        background: linear-gradient(90deg, #0B56E4, #5A8DF7);
+        color: #ffffff;
+        text-align: center;
+        padding: 25px 15px;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+      .content {
+        padding: 25px 30px;
+      }
+      .content p {
+        line-height: 1.6;
+        font-size: 15px;
+        margin-bottom: 15px;
+      }
+      .content b {
+        color: #0B56E4;
+      }
+      .button-container {
+        text-align: center;
+        margin: 30px 0;
+      }
+      .button {
+        background: #0B56E4;
+        color: #ffffff;
+        padding: 12px 28px;
+        text-decoration: none;
+        border-radius: 6px;
+        display: inline-block;
+        font-weight: 600;
+      }
+      .button:hover {
+        background: #0848c3;
+      }
+      .footer {
+        background: #f0f4f9;
+        color: #666;
+        text-align: center;
+        font-size: 13px;
+        padding: 15px;
+        border-top: 1px solid #e0e6ef;
+      }
+      @media (max-width: 600px) {
+        .content {
+          padding: 20px;
+        }
+        .button {
+          width: 100%;
+          box-sizing: border-box;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <div class="header">
+        <h1>🎉 Organization Created Successfully!</h1>
+      </div>
+
+      <div class="content">
+        <p>Hi <b>${adminName}</b>,</p>
+
+        <p>We’re excited to inform you that your organization <b>${orgName}</b> has been successfully created on <b>KDS CRM</b>.</p>
+
+        <p>Here are your login details:</p>
+        <p>
+          <b>Login Email:</b> ${adminEmail}<br/>
+          <b>Password:</b> ${password}
+        </p>
+
+        <div class="button-container">
+          <a href="https://app.kdscrm.com/login" class="button" target="_blank">Login Now</a>
+        </div>
+
+        <p>If you didn’t request this, please contact our support team immediately.</p>
+      </div>
+
+      <div class="footer">
+        © ${new Date().getFullYear()} KDS CRM. All rights reserved.<br/>
+        <a href="https://kdscrm.com" style="color:#0B56E4;text-decoration:none;">Visit Website</a>
+      </div>
+    </div>
+  </body>
+</html>
+`;
+
 
             await SendEmail(
                 orgId,

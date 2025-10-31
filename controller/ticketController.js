@@ -151,7 +151,7 @@ export const getTicketByClientId = async (req, res) => {
         const { id } = req.params;
 
         // 1️⃣ Fetch tickets from MongoDB
-        const tickets = await Ticket.find({ clientId: id })
+        const tickets = await Ticket.find({ createdBy: id })
             .populate('Project')
             .populate('createdBy')
             .sort({ createdAt: -1 });
@@ -296,8 +296,11 @@ export const closeTicket = async (req, res) => {
 };
 
 
+// Message Thread Controllers
 
-// 📩 Add message to ticket thread
+/**
+ * 📩 Add message to ticket thread
+ */
 export const addMessageToTicket = async (req, res) => {
     try {
         const { message, senderId, senderType, attachments } = req.body;
@@ -329,7 +332,9 @@ export const addMessageToTicket = async (req, res) => {
 
 
 
-// 💬 Get message threads for a ticket
+/**
+ * 💬 Get message threads for a ticket
+ */
 export const getMessageThreads = async (req, res) => {
     try {
         const { id } = req.params;
@@ -434,7 +439,9 @@ export const getMessageThreads = async (req, res) => {
 
 
 
-// ✏️ Edit a message in a ticket thread
+/**
+ * ✏️ Edit a message in a ticket thread
+ */
 export const editMessageInTicket = async (req, res) => {
     try {
         const { id, messageId } = req.params;
@@ -462,7 +469,10 @@ export const editMessageInTicket = async (req, res) => {
 };
 
 
-// 🗑️ Delete a message from a ticket thread
+
+/**
+ * 🗑️ Delete a message from a ticket thread
+ */
 export const deleteMessageFromTicket = async (req, res) => {
     try {
         const { id, messageId } = req.params;

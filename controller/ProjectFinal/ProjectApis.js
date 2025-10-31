@@ -12,6 +12,7 @@ import db from "../../db/sql_conn.js"
 import task from "../../models/taskModel.js";
 import Notes from "../../models/Notes.js"
 import Timeline from "../../models/Tasks/ProjectTimeLine.js";
+import Ticket from "../../models/Ticket.js";
 // import { act } from "react";
 
 
@@ -1052,7 +1053,7 @@ export const createTaskTimer = async (req, res) => {
         taskId,
         projectId,
         submitedBy,
-        Note: Note ,
+        Note: Note,
         clockIn: now,
         totalTime: 0,
         status: "running",
@@ -1457,7 +1458,7 @@ export const createNote = async (req, res) => {
     res.status(201).json({ status: true, meet });
   } catch (error) {
     console.error("Error creating meet:", error);
-    res.status(500).json({ status: false, message:error.message,error });
+    res.status(500).json({ status: false, message: error.message, error });
   }
 };
 
@@ -1733,7 +1734,7 @@ export const getProjectTimeline = async (req, res) => {
 export const getSpecificProjectTimeline = async (req, res) => {
   try {
     const { organizationId } = req.user;
-    const { projectId } = req.params; 
+    const { projectId } = req.params;
 
     if (!projectId) {
       return res.status(400).json({
