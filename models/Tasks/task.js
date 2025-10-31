@@ -30,6 +30,10 @@ const mySchema = new mongoose.Schema(
     taskfile: {
       type: String,
     },
+    ticket:{
+      ref:"Ticket",
+      type:mongoose.Schema.Types.ObjectId
+    },
     organizationId: String
 
   },

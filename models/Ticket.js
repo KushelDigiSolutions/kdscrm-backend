@@ -13,7 +13,7 @@ const ticketSchema = new mongoose.Schema({
     description: { type: String, required: true },
     category: { type: String, enum: ['IT', 'HR', 'Finance', 'General'], default: 'General' },
     priority: { type: String, enum: ['Low', 'Medium', 'High', 'Critical'], default: 'Low' },
-    status: { type: String, enum: ['Open', 'In Progress', 'Resolved', 'Closed'], default: 'Open' },
+    status: { type: String, enum: ['Open', 'In Progress', 'Resolved', 'Closed','Reopen'], default: 'Open' },
     assignedTo: { type: String, default: null },
     feedback: {
         rating: { type: Number, min: 1, max: 5 },
@@ -28,6 +28,7 @@ const ticketSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Projects"
     },
+    files: [{ type: String }], // optional: URLs or file paths
 
     // 💬 Conversation between Client & Admin
     messageThread: [messageSchema]
